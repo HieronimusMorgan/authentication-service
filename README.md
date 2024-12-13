@@ -124,7 +124,8 @@
   ```
 - **Get Data**:
   ```go
-  utils.GetDataFromRedis("key", "field")
+  var token string
+  utils.GetDataFromRedis("key", "field", &token)
   ```
 
 ---
