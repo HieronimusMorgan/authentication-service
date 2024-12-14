@@ -1,13 +1,14 @@
 package services
 
 import (
-	"Authentication/internal/dto/in"
-	"Authentication/internal/dto/out"
-	"Authentication/internal/models"
-	"Authentication/internal/repository"
-	"Authentication/internal/utils"
+	"authentication/internal/dto/in"
+	"authentication/internal/dto/out"
+	"authentication/internal/models"
+	"authentication/internal/repository"
+	"authentication/internal/utils"
 	"encoding/json"
 	"gorm.io/gorm"
+	"log"
 )
 
 type AuthService struct {
@@ -73,8 +74,14 @@ func (s AuthService) Register(i *in.RegisterRequest) (interface{}, interface{}) 
 		RefreshToken:   token.RefreshToken,
 	}
 
-	utils.SaveDataToRedis("token", user.ClientID, token)
-	utils.SaveDataToRedis("user", user.ClientID, user)
+	err = utils.SaveDataToRedis("token", user.ClientID, token)
+	if err != nil {
+		log.Printf("Error saving token to redis: %v", err)
+	}
+	err = utils.SaveDataToRedis("user", user.ClientID, user)
+	if err != nil {
+		log.Printf("Error saving user to redis: %v", err)
+	}
 	return response, nil
 }
 

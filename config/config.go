@@ -29,3 +29,11 @@ func LoadConfig() Config {
 		DBSchema:   os.Getenv("DB_SCHEMA"),
 	}
 }
+
+func LoadRedisConfig() string {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+	return os.Getenv("REDIS_URL")
+}

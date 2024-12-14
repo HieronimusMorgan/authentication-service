@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"authentication/config"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"log"
@@ -14,7 +16,7 @@ var Ctx = context.Background()
 
 func InitializeRedis() {
 	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     config.LoadRedisConfig(),
 		Password: "",
 		DB:       0,
 	})
@@ -46,7 +48,7 @@ func SaveDataToRedis(key string, clientID string, data interface{}) error {
 func GetDataFromRedis(key string, clientID string, target interface{}) error {
 	redisKey := key + ":" + clientID
 	jsonData, err := RedisClient.Get(Ctx, redisKey).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return fmt.Errorf("no data found for key: %s", redisKey)
 	} else if err != nil {
 		return fmt.Errorf("failed to get data from Redis: %v", err)
@@ -66,7 +68,7 @@ func generateRedisKey(clientID string) string {
 func GetTokenFromRedis(clientID string) (string, error) {
 	redisKey := generateRedisKey(clientID)
 	token, err := RedisClient.Get(Ctx, redisKey).Result()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		return "", nil // Token not found
 	} else if err != nil {
 		return "", err // Other errors

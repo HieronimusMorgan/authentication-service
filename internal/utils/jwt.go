@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"Authentication/internal/models"
+	"authentication/internal/models"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"

@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"Authentication/internal/models"
+	"authentication/internal/models"
 	"encoding/json"
 	"errors"
 	"gorm.io/gorm"

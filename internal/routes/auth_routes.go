@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"Authentication/internal/handler"
-	"Authentication/internal/middleware"
+	"authentication/internal/handler"
+	"authentication/internal/middleware"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

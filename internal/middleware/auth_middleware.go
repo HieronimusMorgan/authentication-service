@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"Authentication/internal/utils"
-	"Authentication/package/response"
+	"authentication/internal/utils"
+	"authentication/package/response"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )

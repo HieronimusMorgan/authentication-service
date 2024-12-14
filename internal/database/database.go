@@ -1,17 +1,13 @@
 package database
 
 import (
-	"Authentication/config"
-	"errors"
-	"github.com/golang-migrate/migrate/v4"
+	"authentication/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 	"log"
 )
-
-var Db *gorm.DB
 
 func InitDB() *gorm.DB {
 	cfg := config.LoadConfig()
@@ -42,25 +38,14 @@ func InitDB() *gorm.DB {
 
 func CloseDB(db *gorm.DB) {
 	sqlDB, _ := db.DB()
-	sqlDB.Close()
+	err := sqlDB.Close()
+	if err != nil {
+		return
+	}
 }
 
 func schemaNamingStrategy(schemaName string) schema.NamingStrategy {
 	return schema.NamingStrategy{
 		TablePrefix: schemaName + ".", // Use the schema as a prefix
 	}
-}
-
-func RunMigrations(dsn string, migrationsPath string) {
-	m, err := migrate.New(migrationsPath, dsn)
-	if err != nil {
-		log.Fatalf("Failed to initialize migrations: %v", err)
-	}
-
-	// Run migrations up
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Fatalf("Failed to run migrations: %v", err)
-	}
-
-	log.Println("Migrations applied successfully")
 }

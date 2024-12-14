@@ -1,11 +1,10 @@
 package main
 
 import (
-	"Authentication/internal/database"
-	"Authentication/internal/routes"
-	"Authentication/internal/utils"
+	"authentication/internal/database"
+	"authentication/internal/routes"
+	"authentication/internal/utils"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm/schema"
 	"log"
 )
 
@@ -25,11 +24,8 @@ func main() {
 
 	// Run server
 	log.Println("Starting server on :8080")
-	r.Run(":8080")
-}
-
-func schemaNamingStrategy(schemaName string) schema.NamingStrategy {
-	return schema.NamingStrategy{
-		TablePrefix: schemaName + ".", // Use the schema as a prefix
+	err := r.Run(":8080")
+	if err != nil {
+		return
 	}
 }

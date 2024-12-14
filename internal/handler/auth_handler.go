@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"Authentication/internal/dto/in"
-	"Authentication/internal/services"
-	"Authentication/package/response"
+	"authentication/internal/dto/in"
+	"authentication/internal/services"
+	"authentication/package/response"
 	"gorm.io/gorm"
 	"net/http"
 
