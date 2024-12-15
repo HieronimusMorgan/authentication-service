@@ -2,7 +2,6 @@ package routes
 
 import (
 	"authentication/internal/handler"
-	"authentication/internal/middleware"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -14,19 +13,14 @@ func AuthRoutes(r *gin.Engine, db *gorm.DB) {
 	// Public Routes
 	public := r.Group("/auth/v1")
 	{
-		public.POST("/register/internal-token", authHandler.RegisterInternalToken)
-		public.Use(middleware.AuthMiddleware())
-		{
-			public.POST("/register", authHandler.Register)
-			public.POST("/login", authHandler.Login)
-			//public.POST("/refresh", authHandler.RefreshToken)
-			public.GET("/profile", authHandler.GetProfile)
-
-		}
+		//public.POST("/register/internal-token", authHandler.RegisterInternalToken)
+		//public.Use(middleware.AuthMiddleware())
+		//{
+		public.POST("/register", authHandler.Register)
+		public.POST("/login", authHandler.Login)
+		//public.POST("/refresh", authHandler.RefreshToken)
+		public.GET("/profile", authHandler.GetProfile)
+		//}
 	}
 
-	// Default health check endpoint
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
 }

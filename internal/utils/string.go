@@ -2,7 +2,9 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -22,4 +24,12 @@ func ValidateUsername(username string) error {
 	}
 
 	return nil
+}
+
+func ConvertToUint(input string) (uint, error) {
+	parsed, err := strconv.ParseUint(input, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid uint value: %w", err)
+	}
+	return uint(parsed), nil
 }

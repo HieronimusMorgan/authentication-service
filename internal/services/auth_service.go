@@ -6,61 +6,78 @@ import (
 	"authentication/internal/models"
 	"authentication/internal/repository"
 	"authentication/internal/utils"
-	"encoding/json"
 	"gorm.io/gorm"
-	"log"
 )
 
 type AuthService struct {
-	AuthRepository     *repository.AuthRepository
-	ResourceRepository *repository.ResourceRepository
+	AuthRepository         *repository.AuthRepository
+	ResourceRepository     *repository.ResourceRepository
+	RoleRepository         *repository.RoleRepository
+	RoleResourceRepository *repository.RoleResourceRepository
+	UserRepository         *repository.UserRepository
+	UserRoleRepository     *repository.UserRoleRepository
 }
 
 func NewAuthService(db *gorm.DB) *AuthService {
-	userRepo := repository.NewAuthRepository(db)
-	resourceRepo := repository.NewResourceRepository(db)
-	return &AuthService{AuthRepository: userRepo, ResourceRepository: resourceRepo}
+	return &AuthService{
+		AuthRepository:         repository.NewAuthRepository(db),
+		ResourceRepository:     repository.NewResourceRepository(db),
+		RoleRepository:         repository.NewRoleRepository(db),
+		RoleResourceRepository: repository.NewRoleResourceRepository(db),
+		UserRepository:         repository.NewUserRepository(db),
+		UserRoleRepository:     repository.NewUserRoleRepository(db),
+	}
 }
 
-func (s AuthService) Register(i *in.RegisterRequest) (interface{}, interface{}) {
-	if err := utils.ValidateUsername(i.Username); err != nil {
+func (s AuthService) Register(req *in.RegisterRequest) (interface{}, error) {
+	if err := utils.ValidateUsername(req.Username); err != nil {
 		return nil, err
 	}
-	pass, err := utils.HashPassword(i.Password)
+
+	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		return nil, err
 	}
 
-	firstName := utils.ValidationTrimSpace(i.FirstName)
-	lastName := utils.ValidationTrimSpace(i.LastName)
+	firstName := utils.ValidationTrimSpace(req.FirstName)
+	lastName := utils.ValidationTrimSpace(req.LastName)
 	fullName := firstName + " " + lastName
 
-	user := models.User{
+	user := &models.Users{
 		ClientID:       utils.GenerateClientID(),
-		Username:       i.Username,
-		Password:       pass,
+		Username:       req.Username,
+		Password:       hashedPassword,
 		FirstName:      firstName,
 		LastName:       lastName,
 		FullName:       fullName,
-		PhoneNumber:    i.PhoneNumber,
-		ProfilePicture: i.ProfilePicture,
+		PhoneNumber:    req.PhoneNumber,
+		ProfilePicture: req.ProfilePicture,
 		RoleID:         2,
 	}
-	err = s.AuthRepository.CreateUser(&user)
+
+	if err := s.UserRepository.RegisterUser(&user); err != nil {
+		return nil, err
+	}
+
+	userRole := &models.UserRole{
+		UserID:    user.UserID,
+		RoleID:    user.Role.RoleID,
+		CreatedBy: "system",
+		UpdatedBy: "system",
+	}
+	if err := s.UserRoleRepository.RegisterUserRole(&userRole); err != nil {
+		return nil, err
+	}
+
+	token, err := utils.GenerateToken(*user)
 	if err != nil {
 		return nil, err
 	}
 
-	assignResource, err := s.AuthRepository.AssignUserResource(user.UserID, 1)
-	if err != nil {
-		return nil, err
-	}
+	_ = utils.SaveDataToRedis("token", user.ClientID, token)
+	_ = utils.SaveDataToRedis("user", user.ClientID, user)
 
-	token, err := utils.GenerateToken(user)
-	if err != nil {
-		return nil, err
-	}
-
+	// Construct response
 	response := out.RegisterResponse{
 		UserID:         user.UserID,
 		Username:       user.Username,
@@ -68,67 +85,56 @@ func (s AuthService) Register(i *in.RegisterRequest) (interface{}, interface{}) 
 		LastName:       user.LastName,
 		PhoneNumber:    user.PhoneNumber,
 		ProfilePicture: user.ProfilePicture,
-		Role:           assignResource.Role,
-		Resource:       assignResource.Resource,
 		Token:          token.AccessToken,
 		RefreshToken:   token.RefreshToken,
-	}
-
-	err = utils.SaveDataToRedis("token", user.ClientID, token)
-	if err != nil {
-		log.Printf("Error saving token to redis: %v", err)
-	}
-	err = utils.SaveDataToRedis("user", user.ClientID, user)
-	if err != nil {
-		log.Printf("Error saving user to redis: %v", err)
 	}
 	return response, nil
 }
 
-func (s AuthService) Login(loginRequest *struct {
+func (s AuthService) Login(req *struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }) (interface{}, error) {
-	user, err := s.AuthRepository.GetUserByUsername(loginRequest.Username)
+	user, err := s.AuthRepository.GetUserByUsername(req.Username)
+	if err != nil {
+		return nil, err
+	}
+	u := user.(models.Users)
+	if err := utils.CheckPassword(u.Password, req.Password); err != nil {
+		return nil, err
+	}
+
+	role, err := s.RoleRepository.GetRoleByID(u.RoleID)
+	u.Role = *role
+
+	token, err := utils.GenerateToken(u)
 	if err != nil {
 		return nil, err
 	}
 
-	err = utils.CheckPassword(user.(models.User).Password, loginRequest.Password)
-	if err != nil {
-		return nil, err
-	}
-
-	token, err := utils.GenerateToken(user.(models.User))
-	if err != nil {
-		return nil, err
-	}
+	_ = utils.SaveDataToRedis("token", u.ClientID, token)
+	_ = utils.SaveDataToRedis("user", u.ClientID, user)
 
 	response := out.LoginResponse{
-		UserID:         user.(models.User).UserID,
-		Username:       user.(models.User).Username,
-		FirstName:      user.(models.User).FirstName,
-		LastName:       user.(models.User).LastName,
-		PhoneNumber:    user.(models.User).PhoneNumber,
-		ProfilePicture: user.(models.User).ProfilePicture,
+		UserID:         u.UserID,
+		Username:       u.Username,
+		FirstName:      u.FirstName,
+		LastName:       u.LastName,
+		PhoneNumber:    u.PhoneNumber,
+		ProfilePicture: u.ProfilePicture,
 		Token:          token.AccessToken,
 		RefreshToken:   token.RefreshToken,
 	}
-	jsonData, err := json.Marshal(token)
-	if err != nil {
-		return nil, err
-	}
-	utils.SaveDataToRedis("token", user.(models.User).ClientID, jsonData)
-	utils.SaveDataToRedis("user", user.(models.User).ClientID, user)
 	return response, nil
 }
 
-func (s AuthService) GetProfile(token string) (*models.User, error) {
-	tokenClaims, err := utils.ExtractClaims(token)
+func (s AuthService) GetProfile(token string) (*models.Users, error) {
+	claims, err := utils.ExtractClaims(token)
 	if err != nil {
 		return nil, err
 	}
-	user, err := s.AuthRepository.GetUserByClientID(tokenClaims.ClientID)
+
+	user, err := s.AuthRepository.GetUserByClientID(claims.ClientID)
 	if err != nil {
 		return nil, err
 	}
@@ -136,10 +142,10 @@ func (s AuthService) GetProfile(token string) (*models.User, error) {
 	return user, nil
 }
 
-func (s AuthService) RegisterInternalToken(i *struct {
+func (s AuthService) RegisterInternalToken(req *struct {
 	ResourceName string `json:"resource_name" binding:"required"`
 }) (interface{}, error) {
-	resource, err := s.ResourceRepository.GetResourceByName(i.ResourceName)
+	resource, err := s.ResourceRepository.GetResourceByName(req.ResourceName)
 	if err != nil {
 		return nil, err
 	}
@@ -149,8 +155,7 @@ func (s AuthService) RegisterInternalToken(i *struct {
 		return nil, err
 	}
 
-	err = s.ResourceRepository.CreateInternalToken(resource.ResourceID, token)
-	if err != nil {
+	if err := s.ResourceRepository.CreateInternalToken(resource.ResourceID, token); err != nil {
 		return nil, err
 	}
 

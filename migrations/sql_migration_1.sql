@@ -128,6 +128,20 @@ INSERT INTO role_resources (role_id, resource_id, created_at, created_by)
 VALUES ((SELECT role_id FROM roles WHERE name = 'User'), (SELECT resource_id FROM resources WHERE name = 'Auth'),
         CURRENT_TIMESTAMP, 'system');
 
+INSERT INTO users (client_id, username, password, first_name, last_name, full_name, phone_number, profile_picture,
+                   role_id, created_by, updated_by)
+VALUES ('admin-client-id',
+        'admin',
+        '$2b$12$IosGzGt0LzbOF19eJ50DmenioXu1kJT/8g1G30pWDFdihITiX52GG',
+        'Admin',
+        'User',
+        'Admin User',
+        '1234567890',
+        'https://example.com/admin.png',
+        1,
+        'system',
+        'system');
+
 -- Function to update updated_at column
 CREATE
 OR REPLACE FUNCTION update_updated_at()

@@ -20,7 +20,9 @@ func main() {
 	r := gin.Default()
 
 	// Register routes
+	routes.ResourceRoutes(r, db)
 	routes.AuthRoutes(r, db)
+	routes.RoleRoutes(r, db)
 
 	// Run server
 	log.Println("Starting server on :8080")

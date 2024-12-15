@@ -45,7 +45,7 @@ func SaveDataToRedis(key string, clientID string, data interface{}) error {
 	return err
 }
 
-func GetDataFromRedis(key string, clientID string, target interface{}) error {
+func GetDataFromRedis(key string, clientID string, target **interface{}) error {
 	redisKey := key + ":" + clientID
 	jsonData, err := RedisClient.Get(Ctx, redisKey).Result()
 	if errors.Is(err, redis.Nil) {

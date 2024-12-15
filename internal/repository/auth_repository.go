@@ -17,25 +17,25 @@ func NewAuthRepository(db *gorm.DB) *AuthRepository {
 	return &AuthRepository{DB: db}
 }
 
-func (r AuthRepository) CreateUser(user *models.User) error {
+func (r AuthRepository) CreateUser(user *models.Users) error {
 	return r.DB.Create(user).Error
 }
 
 func (r AuthRepository) GetUserByUsername(username string) (interface{}, error) {
-	var user models.User
-	err := r.DB.Where("username = ?", username).First(&user).Error
+	var user models.Users
+	err := r.DB.Preload("Role").Where("username = ?", username).First(&user).Error
 	return user, err
 }
 
-func (r AuthRepository) GetUserByClientID(clientID string) (*models.User, error) {
-	var user models.User
+func (r AuthRepository) GetUserByClientID(clientID string) (*models.Users, error) {
+	var user models.Users
 	err := r.DB.Where("client_id = ?", clientID).First(&user).Error
 	return &user, err
 }
 
 func (r AuthRepository) AssignUserResource(userID uint, resourceID uint) (*AssignResource, error) {
 	// Validate user
-	var user models.User
+	var user models.Users
 	if err := r.DB.Preload("Role").First(&user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
@@ -87,8 +87,13 @@ func (r AuthRepository) AssignUserResource(userID uint, resourceID uint) (*Assig
 		return nil, err
 	}
 
+	var existingUserRoles models.UserRole
+	err = r.DB.Where("user_id = ? AND role_id = ?", user.UserID, role.RoleID).First(&existingUserRoles).Error
+	if err != nil {
+
+	}
+
 	// Log success and return response
-	log.Printf("Resource '%s' assigned to user '%s' successfully!", resource.Name, user.Username)
 	return &AssignResource{
 		UserID:     userID,
 		ResourceID: resourceID,
@@ -100,7 +105,7 @@ func (r AuthRepository) AssignUserResource(userID uint, resourceID uint) (*Assig
 
 func (r AuthRepository) AssignUserResourceByName(userID uint, resourceName string) (*AssignResource, error) {
 	// Validate user
-	var user models.User
+	var user models.Users
 	if err := r.DB.Preload("Role").First(&user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
