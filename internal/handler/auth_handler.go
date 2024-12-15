@@ -3,6 +3,7 @@ package handler
 import (
 	"authentication/internal/dto/in"
 	"authentication/internal/services"
+	"authentication/internal/utils"
 	"authentication/package/response"
 	"gorm.io/gorm"
 	"net/http"
@@ -101,4 +102,25 @@ func (h AuthHandler) RegisterInternalToken(c *gin.Context) {
 	}
 
 	handleSuccessResponse(c, http.StatusCreated, "Internal token registered successfully", token)
+}
+
+func (h AuthHandler) DeleteUser(ctx *gin.Context) {
+	userID, err := utils.ConvertToUint(ctx.Param("id"))
+	if err != nil {
+		response.SendResponse(ctx, 400, "Resource ID must be a number", nil, err)
+		return
+	}
+
+	token, err := extractClaims(ctx)
+	if err != nil {
+		return
+	}
+
+	err = h.AuthService.DeleteUserById(userID, token.ClientID)
+	if err != nil {
+		response.SendResponse(ctx, 500, "Failed to delete user", nil, err)
+		return
+	}
+
+	response.SendResponse(ctx, 200, "User deleted successfully", nil, nil)
 }

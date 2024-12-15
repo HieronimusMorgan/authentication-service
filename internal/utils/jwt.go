@@ -108,7 +108,7 @@ func ValidateTokenAdmin(tokenString string) (*jwt.MapClaims, error) {
 		if strings.EqualFold(role, "Admin") {
 			return &claims, nil
 		}
-		return nil, errors.New("unauthorized: user is not an Admin")
+		return nil, errors.New("user is not an Admin")
 	}
 
 	return nil, errors.New("role not found in token claims")

@@ -39,7 +39,9 @@ func (r ResourceRepository) DeleteResourceById(resourceID uint) error {
 }
 
 func (r ResourceRepository) DeleteResource(resource *models.Resource) error {
-	err := r.DB.Delete(&resource).Error
+	err := r.DB.Model(&resource).
+		Update("deleted_by", resource.DeletedBy).
+		Delete(&resource).Error
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package routes
 
 import (
 	"authentication/internal/handler"
+	"authentication/internal/middleware"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -13,14 +14,13 @@ func AuthRoutes(r *gin.Engine, db *gorm.DB) {
 	// Public Routes
 	public := r.Group("/auth/v1")
 	{
-		//public.POST("/register/internal-token", authHandler.RegisterInternalToken)
-		//public.Use(middleware.AuthMiddleware())
-		//{
 		public.POST("/register", authHandler.Register)
 		public.POST("/login", authHandler.Login)
-		//public.POST("/refresh", authHandler.RefreshToken)
 		public.GET("/profile", authHandler.GetProfile)
-		//}
+	}
+	public.Use(middleware.AuthMiddleware())
+	{
+		public.DELETE("/delete-user/:id", authHandler.DeleteUser)
 	}
 
 }

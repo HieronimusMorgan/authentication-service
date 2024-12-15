@@ -39,7 +39,9 @@ func (r RoleResourceRepository) UpdateRoleResource(roleResource **models.RoleRes
 }
 
 func (r RoleResourceRepository) DeleteRoleResource(roleResource **models.RoleResource) error {
-	err := r.DB.Delete(roleResource).Error
+	err := r.DB.Model(roleResource).
+		Update("deleted_by", (*roleResource).DeletedBy).
+		Delete(roleResource).Error
 	if err != nil {
 		return err
 	}

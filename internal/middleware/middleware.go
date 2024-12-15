@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func ResourceMiddleware() gin.HandlerFunc {
+func Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
 		if token == "" {
@@ -16,7 +16,7 @@ func ResourceMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		_, err := utils.ValidateTokenAdmin(token)
+		_, err := utils.ValidateToken(token)
 		if err != nil {
 			response.SendResponse(c, http.StatusUnauthorized, "Invalid token", nil, "Invalid token")
 			c.Abort()

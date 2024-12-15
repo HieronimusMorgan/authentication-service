@@ -6,7 +6,9 @@ import (
 	"authentication/internal/models"
 	"authentication/internal/repository"
 	"authentication/internal/utils"
+	"errors"
 	"gorm.io/gorm"
+	"strings"
 )
 
 type AuthService struct {
@@ -53,6 +55,8 @@ func (s AuthService) Register(req *in.RegisterRequest) (interface{}, error) {
 		PhoneNumber:    req.PhoneNumber,
 		ProfilePicture: req.ProfilePicture,
 		RoleID:         2,
+		CreatedBy:      "system",
+		UpdatedBy:      "system",
 	}
 
 	if err := s.UserRepository.RegisterUser(&user); err != nil {
@@ -160,4 +164,39 @@ func (s AuthService) RegisterInternalToken(req *struct {
 	}
 
 	return token, nil
+}
+
+func (s AuthService) DeleteUserById(userID uint, clientID string) error {
+	admin, err := s.UserRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return err
+	}
+
+	err = s.checkUserIsAdmin(admin)
+	if err != nil {
+		return err
+	}
+	var user *models.Users
+	user, err = s.UserRepository.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	user.DeletedBy = admin.FullName
+	err = s.UserRepository.DeleteUser(user)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s AuthService) checkUserIsAdmin(user *models.Users) error {
+	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
+	if err != nil {
+		return errors.New("role not found")
+	}
+	if strings.EqualFold(role.Name, "Admin") {
+		return nil
+	}
+	return errors.New("user is not an admin")
 }

@@ -24,14 +24,6 @@ func extractClaims(context *gin.Context) (utils.TokenClaims, error) {
 	return *token, err
 }
 
-func sendResponse(ctx *gin.Context, status int, message string, data interface{}, err error) {
-	var errMsg string
-	if err != nil {
-		errMsg = err.Error()
-	}
-	response.SendResponse(ctx, status, message, data, errMsg)
-}
-
 func (h ResourceHandler) AddResource(ctx *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required"`
@@ -44,12 +36,12 @@ func (h ResourceHandler) AddResource(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		sendResponse(ctx, 400, "Invalid request", nil, err)
+		response.SendResponse(ctx, 400, "Invalid request", nil, err)
 		return
 	}
 
 	resource, err := h.ResourceService.AddResource(&req.Name, &req.Description, token.ClientID)
-	sendResponse(ctx, 200, "Resource added successfully", resource, err)
+	response.SendResponse(ctx, 200, "Resource added successfully", resource, err)
 }
 
 func (h ResourceHandler) UpdateResource(ctx *gin.Context) {
@@ -60,7 +52,7 @@ func (h ResourceHandler) UpdateResource(ctx *gin.Context) {
 
 	resourceID, err := utils.ConvertToUint(ctx.Param("id"))
 	if err != nil {
-		sendResponse(ctx, 400, "Resource ID must be a number", nil, err)
+		response.SendResponse(ctx, 400, "Resource ID must be a number", nil, err)
 		return
 	}
 
@@ -70,12 +62,12 @@ func (h ResourceHandler) UpdateResource(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		sendResponse(ctx, 400, "Invalid request", nil, err)
+		response.SendResponse(ctx, 400, "Invalid request", nil, err)
 		return
 	}
 
 	resource, err := h.ResourceService.UpdateResource(resourceID, &req.Name, &req.Description, token.ClientID)
-	sendResponse(ctx, 200, "Resource updated successfully", resource, err)
+	response.SendResponse(ctx, 200, "Resource updated successfully", resource, err)
 }
 
 func (h ResourceHandler) GetResources(ctx *gin.Context) {
@@ -85,7 +77,7 @@ func (h ResourceHandler) GetResources(ctx *gin.Context) {
 	}
 
 	resources, err := h.ResourceService.GetResources(token.ClientID)
-	sendResponse(ctx, 200, "Resources retrieved successfully", resources, err)
+	response.SendResponse(ctx, 200, "Resources retrieved successfully", resources, err)
 }
 
 func (h ResourceHandler) AssignResourceToRole(ctx *gin.Context) {
@@ -100,18 +92,18 @@ func (h ResourceHandler) AssignResourceToRole(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		sendResponse(ctx, 400, "Invalid request", nil, err)
+		response.SendResponse(ctx, 400, "Invalid request", nil, err)
 		return
 	}
 
 	roleResource, err := h.ResourceService.AssignResourceToRole(req.RoleID, req.ResourceID, token.ClientID)
-	sendResponse(ctx, 200, "Resource assigned to role successfully", roleResource, err)
+	response.SendResponse(ctx, 200, "Resource assigned to role successfully", roleResource, err)
 }
 
 func (h ResourceHandler) GetResourcesById(ctx *gin.Context) {
 	resourceID, err := utils.ConvertToUint(ctx.Param("id"))
 	if err != nil {
-		sendResponse(ctx, 400, "Resource ID must be a number", nil, err)
+		response.SendResponse(ctx, 400, "Resource ID must be a number", nil, err)
 		return
 	}
 
@@ -121,13 +113,13 @@ func (h ResourceHandler) GetResourcesById(ctx *gin.Context) {
 	}
 
 	resource, err := h.ResourceService.GetResourceById(resourceID, token.ClientID)
-	sendResponse(ctx, 200, "Resource retrieved successfully", resource, err)
+	response.SendResponse(ctx, 200, "Resource retrieved successfully", resource, err)
 }
 
 func (h ResourceHandler) DeleteResourceById(ctx *gin.Context) {
 	resourceID, err := utils.ConvertToUint(ctx.Param("id"))
 	if err != nil {
-		sendResponse(ctx, 400, "Resource ID must be a number", nil, err)
+		response.SendResponse(ctx, 400, "Resource ID must be a number", nil, err)
 		return
 	}
 
@@ -137,5 +129,5 @@ func (h ResourceHandler) DeleteResourceById(ctx *gin.Context) {
 	}
 
 	err = h.ResourceService.DeleteResourceById(resourceID, token.ClientID)
-	sendResponse(ctx, 200, "Resource deleted successfully", nil, err)
+	response.SendResponse(ctx, 200, "Resource deleted successfully", nil, err)
 }

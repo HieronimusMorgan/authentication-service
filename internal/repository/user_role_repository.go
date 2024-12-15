@@ -39,7 +39,9 @@ func (r UserRoleRepository) UpdateUserRole(userRole **models.UserRole) error {
 }
 
 func (r UserRoleRepository) DeleteUserRole(userRole **models.UserRole) error {
-	err := r.DB.Delete(userRole).Error
+	err := r.DB.Model(userRole).
+		Update("deleted_by", (*userRole).DeletedBy).
+		Delete(userRole).Error
 	if err != nil {
 		return err
 	}

@@ -47,8 +47,10 @@ func (r UserRepository) UpdateUser(user **models.Users) error {
 	return nil
 }
 
-func (r UserRepository) DeleteUser(user **models.Users) error {
-	err := r.DB.Delete(user).Error
+func (r UserRepository) DeleteUser(user *models.Users) error {
+	err := r.DB.Model(&user).
+		Update("deleted_by", user.DeletedBy).
+		Delete(&user).Error
 	if err != nil {
 		return err
 	}
