@@ -61,7 +61,7 @@ func (s AuthService) Register(req *in.RegisterRequest) (interface{}, error) {
 
 	userRole := &models.UserRole{
 		UserID:    user.UserID,
-		RoleID:    user.Role.RoleID,
+		RoleID:    2,
 		CreatedBy: "system",
 		UpdatedBy: "system",
 	}
