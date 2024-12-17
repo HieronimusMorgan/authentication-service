@@ -15,7 +15,7 @@ func RoleRoutes(r *gin.Engine, db *gorm.DB) {
 	protected.Use(middleware.AuthMiddleware())
 	{
 		protected.POST("/add", roleHandler.AddRole)
-		protected.POST("/update/:id", roleHandler.UpdateRole)
+		protected.PUT("/update/:id", roleHandler.UpdateRole)
 		protected.GET("", roleHandler.GetListRole)
 		protected.GET("/:id", roleHandler.GetRoleById)
 		protected.DELETE("/:id", roleHandler.DeleteRoleById)

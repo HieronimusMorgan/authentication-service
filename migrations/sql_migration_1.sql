@@ -107,14 +107,23 @@ CREATE INDEX idx_internal_tokens_resource_id ON internal_tokens (resource_id);
 -- Index for the deleted_at column to optimize queries filtering on soft deletes
 CREATE INDEX idx_internal_tokens_deleted_at ON internal_tokens (deleted_at);
 
-
 INSERT INTO roles (name, description, created_at, created_by)
-VALUES ('Admin', 'Administrator with full access', CURRENT_TIMESTAMP, 'system'),
+VALUES ('Super Admin', 'Super Administrator with highest privileges', CURRENT_TIMESTAMP, 'system'),
+       ('Admin', 'Administrator with full access', CURRENT_TIMESTAMP, 'system'),
        ('User', 'Regular user with limited access', CURRENT_TIMESTAMP, 'system');
 
 INSERT INTO resources (name, description, created_at, created_by)
-VALUES ('Auth', 'Authentication-related operations', CURRENT_TIMESTAMP, 'system'),
+VALUES ('System Management', 'Operations for managing the entire system', CURRENT_TIMESTAMP, 'system'),
+       ('Auth', 'Authentication-related operations', CURRENT_TIMESTAMP, 'system'),
        ('Master', 'Master data management operations', CURRENT_TIMESTAMP, 'system');
+
+-- Assign all existing resources to Super Admin role
+INSERT INTO role_resources (role_id, resource_id, created_at, created_by)
+SELECT (SELECT role_id FROM roles WHERE name = 'Super Admin') AS role_id,
+       resource_id,
+       CURRENT_TIMESTAMP,
+       'system'
+FROM resources;
 
 -- Assign resources to Admin role
 INSERT INTO role_resources (role_id, resource_id, created_at, created_by)
@@ -130,15 +139,15 @@ VALUES ((SELECT role_id FROM roles WHERE name = 'User'), (SELECT resource_id FRO
 
 INSERT INTO users (client_id, username, password, first_name, last_name, full_name, phone_number, profile_picture,
                    role_id, created_by, updated_by)
-VALUES ('admin-client-id',
-        'admin',
-        '$2b$12$IosGzGt0LzbOF19eJ50DmenioXu1kJT/8g1G30pWDFdihITiX52GG',
+VALUES ('super-admin-client-id',
+        'super_admin',
+        '$2b$12$uZN22OA4kvuE7kWS2ArXD./vHOs/x6dGxEH8ZENMVSS7/XRziCcC.',
+        'Super',
         'Admin',
-        'User',
-        'Admin User',
+        'Super Admin',
         '1234567890',
         'https://example.com/admin.png',
-        1,
+        (SELECT role_id FROM roles WHERE name = 'Super Admin'),
         'system',
         'system');
 

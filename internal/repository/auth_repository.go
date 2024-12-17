@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"authentication/internal/dto/out"
 	"authentication/internal/models"
 	"encoding/json"
 	"errors"
@@ -21,15 +22,15 @@ func (r AuthRepository) CreateUser(user *models.Users) error {
 	return r.DB.Create(user).Error
 }
 
-func (r AuthRepository) GetUserByUsername(username string) (interface{}, error) {
+func (r AuthRepository) GetUserByUsername(username string) (*models.Users, error) {
 	var user models.Users
 	err := r.DB.Preload("Role").Where("username = ?", username).First(&user).Error
-	return user, err
+	return &user, err
 }
 
-func (r AuthRepository) GetUserByClientID(clientID string) (*models.Users, error) {
-	var user models.Users
-	err := r.DB.Where("client_id = ?", clientID).First(&user).Error
+func (r AuthRepository) GetUserByClientID(clientID string) (*out.UserResponse, error) {
+	var user out.UserResponse
+	err := r.DB.Table("authentication.users").Where("client_id = ?", clientID).First(&user).Error
 	return &user, err
 }
 

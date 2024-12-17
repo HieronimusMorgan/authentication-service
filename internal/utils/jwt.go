@@ -19,7 +19,7 @@ func GenerateToken(user models.Users) (models.TokenDetails, error) {
 	td.AtExpires = time.Now().Add(time.Hour * 24).Unix()
 	td.AccessUUID = uuid.New().String()
 	td.RtExpires = time.Now().Add(time.Hour * 24 * 7).Unix()
-	td.RefreshUUID = uuid.New().String()
+	td.RefreshUUID = GenerateClientID()
 
 	claims := jwt.MapClaims{
 		"authorized":  true,
@@ -37,16 +37,7 @@ func GenerateToken(user models.Users) (models.TokenDetails, error) {
 		return models.TokenDetails{}, err
 	}
 
-	rtClaims := jwt.MapClaims{
-		"refresh_uuid": td.RefreshUUID,
-		"user_id":      user.UserID,
-		"exp":          td.RtExpires,
-	}
-	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, rtClaims)
-	td.RefreshToken, err = rt.SignedString(jwtSecret)
-	if err != nil {
-		return models.TokenDetails{}, err
-	}
+	td.RefreshToken = GenerateClientID()
 
 	return *td, nil
 }
@@ -62,7 +53,7 @@ func ValidateToken(tokenString string) (*jwt.MapClaims, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("invalid token: %w", err)
+		return nil, err
 	}
 
 	// Extract claims and validate
@@ -90,7 +81,7 @@ func ValidateTokenAdmin(tokenString string) (*jwt.MapClaims, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("invalid token: %w", err)
+		return nil, err
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
@@ -105,7 +96,7 @@ func ValidateTokenAdmin(tokenString string) (*jwt.MapClaims, error) {
 	}
 
 	if role, ok := claims["role"].(string); ok {
-		if strings.EqualFold(role, "Admin") {
+		if strings.EqualFold(role, "Admin") || strings.EqualFold(role, "Super Admin") {
 			return &claims, nil
 		}
 		return nil, errors.New("user is not an Admin")
@@ -157,7 +148,6 @@ func ExtractClaims(tokenString string) (*TokenClaims, error) {
 }
 
 func GenerateInternalToken(serviceName string) (string, error) {
-	// Define claims
 	claims := InternalClaims{
 		Service: serviceName,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -177,9 +167,7 @@ func GenerateInternalToken(serviceName string) (string, error) {
 }
 
 func ValidateInternalToken(tokenString string) (*InternalClaims, error) {
-	// Parse the token
 	token, err := jwt.ParseWithClaims(tokenString, &InternalClaims{}, func(token *jwt.Token) (interface{}, error) {
-		// Ensure the signing method is HMAC
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
 		}
@@ -190,7 +178,6 @@ func ValidateInternalToken(tokenString string) (*InternalClaims, error) {
 		return nil, err
 	}
 
-	// Validate the token claims
 	if claims, ok := token.Claims.(*InternalClaims); ok && token.Valid {
 		return claims, nil
 	}

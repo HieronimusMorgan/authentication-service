@@ -51,7 +51,7 @@ func (h RoleHandler) AddRole(ctx *gin.Context) {
 func (h RoleHandler) UpdateRole(ctx *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required"`
-		Description string `json:"description" binding:"required"`
+		Description string `json:"description" binding:"optional"`
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -68,6 +68,11 @@ func (h RoleHandler) UpdateRole(ctx *gin.Context) {
 	roleID, err := utils.ConvertToUint(id)
 	if err != nil {
 		response.SendResponse(ctx, 400, "Role ID must be a number", nil, err.Error())
+		return
+	}
+
+	if req.Name == "" {
+		response.SendResponse(ctx, 400, "Role name is required", nil, nil)
 		return
 	}
 
@@ -146,7 +151,7 @@ func (h RoleHandler) DeleteRoleById(ctx *gin.Context) {
 
 	err = h.RoleService.DeleteRole(roleID, token.ClientID)
 	if err != nil {
-		response.SendResponse(ctx, 500, "Failed to delete role", nil, err)
+		response.SendResponse(ctx, 500, "Failed to delete role", nil, err.Error())
 		return
 	}
 

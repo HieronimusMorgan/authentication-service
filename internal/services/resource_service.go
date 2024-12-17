@@ -30,7 +30,7 @@ func (s ResourceService) checkUserIsAdmin(user *models.Users) error {
 	if err != nil {
 		return errors.New("role not found")
 	}
-	if strings.EqualFold(role.Name, "Admin") {
+	if strings.EqualFold(role.Name, "Admin") || strings.EqualFold(role.Name, "Super Admin") {
 		return nil
 	}
 	return errors.New("user is not an admin")
@@ -200,4 +200,75 @@ func (s ResourceService) DeleteResourceById(resourceID uint, clientID string) er
 	}
 
 	return nil
+}
+
+func (s ResourceService) GetResourceUserById(resourceID uint, clientID string) (interface{}, error) {
+	user, err := s.UserRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.checkUserIsAdmin(user)
+	if err != nil {
+		return nil, err
+	}
+
+	resource, err := s.ResourceRepository.GetResourceByID(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	users, err := s.UserRepository.GetUserByResourceID(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	var userResponses []struct {
+		UserID      uint
+		ClientID    string
+		FullName    string
+		PhoneNumber string
+		RoleName    string
+		CreatedAt   string
+		UpdatedAt   string
+	}
+
+	for _, user := range *users {
+		userResponses = append(userResponses, struct {
+			UserID      uint
+			ClientID    string
+			FullName    string
+			PhoneNumber string
+			RoleName    string
+			CreatedAt   string
+			UpdatedAt   string
+		}{
+			UserID:      user.UserID,
+			ClientID:    user.ClientID,
+			FullName:    user.FullName,
+			PhoneNumber: user.PhoneNumber,
+			RoleName:    user.Role.Name,
+			CreatedAt:   user.CreatedAt.String(),
+			UpdatedAt:   user.UpdatedAt.String(),
+		})
+	}
+	data := struct {
+		ResourceID   uint   `json:"resource_id"`
+		ResourceName string `json:"resource_name"`
+		Users        []struct {
+			UserID      uint
+			ClientID    string
+			FullName    string
+			PhoneNumber string
+			RoleName    string
+			CreatedAt   string
+			UpdatedAt   string
+		} `json:"users"`
+	}{
+		ResourceID:   resourceID,
+		ResourceName: resource.Name,
+		Users:        userResponses,
+	}
+
+	return data, nil
 }

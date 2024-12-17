@@ -18,7 +18,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		_, err := utils.ValidateTokenAdmin(token)
 		if err != nil {
-			response.SendResponse(c, http.StatusUnauthorized, "Invalid token", nil, err.Error())
+			response.SendResponse(c, http.StatusUnauthorized, "Admin Access", nil, err.Error())
 			c.Abort()
 			return
 		}

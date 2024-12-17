@@ -109,3 +109,46 @@ func (r UserRepository) DeleteUserByID(id uint) error {
 	}
 	return nil
 }
+
+func (r UserRepository) UpdateRole(user *models.Users) error {
+	err := r.DB.Model(&user).
+		Update("role_id", user.RoleID).
+		Update("updated_by", user.UpdatedBy).
+		Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r UserRepository) GetListUser() (*[]models.Users, error) {
+	var users []models.Users
+	err := r.DB.Preload("Role").Find(&users).Where("delete_at IS NULL").Error
+	if err != nil {
+		return nil, err
+	}
+	return &users, nil
+}
+
+func (r UserRepository) GetUserByResourceID(resourceID uint) (*[]models.Users, error) {
+	var users []models.Users
+	err := r.DB.Preload("Role").Joins("JOIN authentication.role_resources rr ON rr.role_id = users.role_id").
+		Joins("JOIN authentication.resources r ON r.resource_id = rr.resource_id").
+		Where("r.resource_id = ?", resourceID).
+		Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	return &users, nil
+}
+
+func (r UserRepository) ChangePassword(user *models.Users) error {
+	err := r.DB.Model(&user).
+		Update("password", user.Password).
+		Update("updated_by", user.UpdatedBy).
+		Error
+	if err != nil {
+		return err
+	}
+	return nil
+}

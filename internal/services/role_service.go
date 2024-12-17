@@ -4,7 +4,10 @@ import (
 	"authentication/internal/dto/out"
 	"authentication/internal/models"
 	"authentication/internal/repository"
+	"encoding/json"
+	"errors"
 	"gorm.io/gorm"
+	"log"
 )
 
 type RoleService struct {
@@ -47,9 +50,9 @@ func (s RoleService) RegisterRole(req *struct {
 
 func (s RoleService) UpdateRole(roleID uint, req *struct {
 	Name        string `json:"name" binding:"required"`
-	Description string `json:"description" binding:"required"`
+	Description string `json:"description" binding:"optional"`
 }, clientID string) (interface{}, error) {
-	user, err := s.UserRepository.GetUserByClientID(clientID)
+	admin, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +63,10 @@ func (s RoleService) UpdateRole(roleID uint, req *struct {
 	}
 
 	role.Name = req.Name
-	role.Description = req.Description
-	role.UpdatedBy = user.FullName
+	if req.Description != "" {
+		role.Description = req.Description
+	}
+	role.UpdatedBy = admin.FullName
 	err = s.RoleRepository.UpdateRole(&role)
 
 	if err != nil {
@@ -125,6 +130,20 @@ func (s RoleService) DeleteRole(roleID uint, clientID string) error {
 	role, err := s.RoleRepository.GetRoleByID(roleID)
 	if err != nil {
 		return err
+	}
+
+	users, err := s.UserRepository.GetUserByRole(roleID)
+	if err != nil {
+		return err
+	}
+
+	if len(*users) > 0 {
+		usersJSON, err := json.Marshal(users)
+		if err != nil {
+			return err
+		}
+		log.Println("Role is still being used by users+ " + string(usersJSON))
+		return errors.New("role is still being used by users")
 	}
 
 	role.DeletedBy = user.FullName

@@ -20,6 +20,7 @@ func ResourceRoutes(r *gin.Engine, db *gorm.DB) {
 		protected.POST("/assign-role", resourceHandler.AssignResourceToRole)
 		protected.GET("", resourceHandler.GetResources)
 		protected.GET("/:id", resourceHandler.GetResourcesById)
+		protected.GET("/user/:id", resourceHandler.GetResourceUserById)
 		protected.DELETE("/:id", resourceHandler.DeleteResourceById)
 	}
 

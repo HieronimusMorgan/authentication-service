@@ -6,10 +6,10 @@ import (
 )
 
 type InternalToken struct {
-	ID         uint           `gorm:"primaryKey" json:"id"`
-	ResourceID uint           `gorm:"not null" json:"resource_id"`
-	Token      string         `gorm:"not null" json:"token"`
-	Expired    bool           `gorm:"not null" json:"expired"`
+	ID         uint           `gorm:"primaryKey" json:"id,omitempty"`
+	ResourceID uint           `gorm:"not null" json:"resource_id,omitempty"`
+	Token      string         `gorm:"not null" json:"token,omitempty"`
+	Expired    bool           `gorm:"not null" json:"expired,omitempty"`
 	CreatedAt  time.Time      `gorm:"autoCreateTime" json:"created_at,omitempty"`
 	CreatedBy  string         `json:"created_by,omitempty"`
 	UpdatedAt  time.Time      `gorm:"autoUpdateTime" json:"updated_at,omitempty"`

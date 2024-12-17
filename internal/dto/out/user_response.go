@@ -1,7 +1,7 @@
 package out
 
 type UserResponse struct {
-	ID             uint   `gorm:"primarykey" json:"id"`
+	UserID         uint   `gorm:"primarykey" json:"user_id"`
 	ClientID       string `gorm:"unique" json:"client_id"`
 	Username       string `gorm:"unique" json:"username"`
 	FirstName      string `json:"first_name"`
