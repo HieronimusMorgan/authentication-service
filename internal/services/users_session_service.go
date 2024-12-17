@@ -33,8 +33,10 @@ func (s UsersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 		IPAddress:    ipAddress,
 		UserAgent:    userAgent,
 		LoginTime:    time.Now(),
+		LogoutTime:   nil,
 		ExpiresAt:    time.Unix(tokenClaims.Exp, 0),
 		CreatedBy:    user.FullName,
+		UpdatedBy:    user.FullName,
 	}
 
 	session, err := s.UserSessionRepository.GetUserSessionByUserID(userID)
@@ -50,6 +52,7 @@ func (s UsersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 	session.LoginTime = time.Now()
 	session.ExpiresAt = time.Unix(tokenClaims.Exp, 0)
 	session.IsActive = true
+	session.LogoutTime = nil
 	session.UpdatedBy = user.FullName
 
 	err = s.UserSessionRepository.UpdateSession(session)
@@ -58,4 +61,29 @@ func (s UsersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 	}
 
 	return nil
+}
+
+func (s UsersSessionService) GetUserSessionByUserID(userID uint) (*models.UserSession, error) {
+	return s.UserSessionRepository.GetUserSessionByUserID(userID)
+}
+
+func (s UsersSessionService) LogoutSession(userID uint) error {
+	currentTime := time.Now()
+	user, err := s.UserRepository.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	session, err := s.UserSessionRepository.GetUserSessionByUserID(userID)
+	if err != nil {
+		return nil
+	}
+	session.IsActive = false
+	session.LogoutTime = &currentTime
+	session.UpdatedBy = user.FullName
+
+	_ = utils.DeleteDataFromRedis(utils.Token, user.ClientID)
+	_ = utils.DeleteDataFromRedis(utils.User, user.ClientID)
+
+	return s.UserSessionRepository.UpdateSession(session)
 }

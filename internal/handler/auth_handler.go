@@ -215,3 +215,18 @@ func (h AuthHandler) ChangePassword(ctx *gin.Context) {
 
 	response.SendResponse(ctx, 200, "Password changed successfully", nil, nil)
 }
+
+func (h AuthHandler) Logout(ctx *gin.Context) {
+	token, err := extractClaims(ctx)
+	if err != nil {
+		return
+	}
+
+	err = h.UserSession.LogoutSession(token.UserID)
+	if err != nil {
+		response.SendResponse(ctx, 400, "User Session", nil, err.Error())
+		return
+	}
+
+	response.SendResponse(ctx, 200, "Logout successful", nil, nil)
+}

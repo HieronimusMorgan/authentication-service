@@ -23,6 +23,7 @@ func AuthRoutes(r *gin.Engine, db *gorm.DB) {
 	{
 		protected.GET("/profile", authHandler.GetProfile)
 		protected.POST("/change-password", authHandler.ChangePassword)
+		public.GET("/logout", authHandler.Logout)
 	}
 
 	// Admin routes: Require authentication middleware

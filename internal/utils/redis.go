@@ -61,6 +61,12 @@ func GetDataFromRedis(key string, clientID string, target **interface{}) error {
 	return nil
 }
 
+func DeleteDataFromRedis(key string, clientID string) error {
+	redisKey := key + ":" + clientID
+	err := RedisClient.Del(Ctx, redisKey).Err()
+	return err
+}
+
 func generateRedisKey(clientID string) string {
 	return "token:" + string(clientID)
 }

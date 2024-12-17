@@ -129,8 +129,8 @@ func (s AuthService) Register(req *in.RegisterRequest) (interface{}, response.Er
 		}
 	}
 
-	_ = utils.SaveDataToRedis("token", user.ClientID, token)
-	_ = utils.SaveDataToRedis("user", user.ClientID, user)
+	_ = utils.SaveDataToRedis(utils.Token, user.ClientID, token)
+	_ = utils.SaveDataToRedis(utils.User, user.ClientID, user)
 
 	responses := out.RegisterResponse{
 		UserID:         user.UserID,
