@@ -107,6 +107,28 @@ CREATE INDEX idx_internal_tokens_resource_id ON internal_tokens (resource_id);
 -- Index for the deleted_at column to optimize queries filtering on soft deletes
 CREATE INDEX idx_internal_tokens_deleted_at ON internal_tokens (deleted_at);
 
+CREATE TABLE user_sessions
+(
+    user_session_id SERIAL PRIMARY KEY,
+    user_id         BIGINT              NOT NULL,
+    session_token   VARCHAR(255) UNIQUE NOT NULL,
+    refresh_token   VARCHAR(255) UNIQUE,
+    ip_address      VARCHAR(45),
+    user_agent      TEXT,
+    login_time      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at      TIMESTAMP           NOT NULL,
+    logout_time     TIMESTAMP NULL,
+    is_active       BOOLEAN   DEFAULT TRUE,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Record creation timestamp
+    created_by      VARCHAR(255),                        -- Created by user or system
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Record update timestamp
+    updated_by      VARCHAR(255),                        -- Updated by user or system
+    deleted_at      TIMESTAMP NULL,                      -- Soft delete timestamp
+    deleted_by      VARCHAR(255),                        -- Deleted by user or system
+    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+);
+
+
 INSERT INTO roles (name, description, created_at, created_by)
 VALUES ('Super Admin', 'Super Administrator with highest privileges', CURRENT_TIMESTAMP, 'system'),
        ('Admin', 'Administrator with full access', CURRENT_TIMESTAMP, 'system'),
@@ -167,6 +189,12 @@ LANGUAGE plpgsql;
 CREATE TRIGGER set_updated_at_roles
     BEFORE UPDATE
     ON roles
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER set_updated_at_user_sessions
+    BEFORE UPDATE
+    ON user_sessions
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
 

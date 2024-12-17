@@ -132,6 +132,10 @@ func ExtractClaims(tokenString string) (*TokenClaims, error) {
 		tc.AccessUUID = accessUUID
 	}
 
+	if exp, ok := claims["exp"].(float64); ok {
+		tc.Exp = int64(exp)
+	}
+
 	if userID, ok := claims["user_id"].(float64); ok { // JWT numbers are float64
 		tc.UserID = uint(userID)
 	}
@@ -191,6 +195,7 @@ type TokenClaims struct {
 	UserID     uint   `json:"user_id"`
 	ClientID   string `json:"client_id"`
 	RoleID     uint   `json:"role_id"`
+	Exp        int64  `json:"exp"`
 }
 
 type InternalClaims struct {

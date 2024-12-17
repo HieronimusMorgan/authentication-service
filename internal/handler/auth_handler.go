@@ -2,6 +2,7 @@ package handler
 
 import (
 	"authentication/internal/dto/in"
+	"authentication/internal/dto/out"
 	"authentication/internal/services"
 	"authentication/internal/utils"
 	"authentication/package/response"
@@ -13,10 +14,11 @@ import (
 
 type AuthHandler struct {
 	AuthService *services.AuthService
+	UserSession *services.UsersSessionService
 }
 
 func NewAuthHandler(db *gorm.DB) *AuthHandler {
-	return &AuthHandler{AuthService: services.NewAuthService(db)}
+	return &AuthHandler{AuthService: services.NewAuthService(db), UserSession: services.NewUsersSessionService(db)}
 }
 
 // Helper for centralized error response
@@ -45,6 +47,14 @@ func (h AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	err := h.UserSession.AddUserSession(user.(out.LoginResponse).UserID, user.(out.LoginResponse).Token,
+		user.(out.LoginResponse).RefreshToken, c.ClientIP(), "WEB")
+
+	if err != nil {
+		handleErrorResponse(c, http.StatusInternalServerError, "Failed to create user session", err)
+		return
+	}
+
 	handleSuccessResponse(c, http.StatusCreated, "User registered successfully", user)
 }
 
@@ -60,6 +70,14 @@ func (h AuthHandler) Login(c *gin.Context) {
 	user, errs := h.AuthService.Login(&req)
 	if errs.Message != "" {
 		handleErrorResponse(c, errs.Code, errs.Message, nil)
+		return
+	}
+
+	err := h.UserSession.AddUserSession(user.(out.LoginResponse).UserID, user.(out.LoginResponse).Token,
+		user.(out.LoginResponse).RefreshToken, c.ClientIP(), "WEB")
+
+	if err != nil {
+		handleErrorResponse(c, http.StatusInternalServerError, "Failed to create user session", err)
 		return
 	}
 
