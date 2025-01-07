@@ -51,9 +51,9 @@ func (s AuthService) checkUserIsAdmin(user *models.Users) response.ErrorResponse
 	return response.ErrorResponse{}
 }
 
-func (s AuthService) Register(req *in.RegisterRequest) (interface{}, response.ErrorResponse) {
+func (s AuthService) Register(req *in.RegisterRequest) (out.RegisterResponse, response.ErrorResponse) {
 	if err := utils.ValidateUsername(req.Username); err != nil {
-		return nil, response.ErrorResponse{
+		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Validation Username",
 			Error:   err.Error(),
@@ -62,7 +62,7 @@ func (s AuthService) Register(req *in.RegisterRequest) (interface{}, response.Er
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		return nil, response.ErrorResponse{
+		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid Password",
 			Error:   err.Error(),
@@ -71,7 +71,7 @@ func (s AuthService) Register(req *in.RegisterRequest) (interface{}, response.Er
 
 	role, err := s.RoleRepository.GetRoleByName("User")
 	if err != nil {
-		return nil, response.ErrorResponse{
+		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Unable to get role",
 			Error:   err.Error(),
@@ -97,7 +97,7 @@ func (s AuthService) Register(req *in.RegisterRequest) (interface{}, response.Er
 	}
 
 	if err := s.UserRepository.RegisterUser(&user); err != nil {
-		return nil, response.ErrorResponse{
+		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Unable to register user",
 			Error:   err.Error(),
@@ -112,7 +112,7 @@ func (s AuthService) Register(req *in.RegisterRequest) (interface{}, response.Er
 	}
 
 	if err := s.UserRoleRepository.RegisterUserRole(&userRole); err != nil {
-		return nil, response.ErrorResponse{
+		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Unable to register user role",
 			Error:   err.Error(),
@@ -122,7 +122,7 @@ func (s AuthService) Register(req *in.RegisterRequest) (interface{}, response.Er
 	user.Role = *role
 	token, err := utils.GenerateToken(*user)
 	if err != nil {
-		return nil, response.ErrorResponse{
+		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Token is invalid",
 			Error:   err.Error(),

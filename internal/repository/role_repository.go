@@ -65,3 +65,17 @@ func (r RoleRepository) DeleteRole(role **models.Role) error {
 	}
 	return nil
 }
+
+func (r RoleRepository) GetAllRolesByResourceId(resource *models.Resource) (*[]models.Role, error) {
+	var roles []models.Role
+	err := r.DB.Table("authentication.roles").
+		Select("roles.role_id, roles.name").
+		Joins("JOIN authentication.role_resources ON roles.role_id = role_resources.role_id").
+		Joins("JOIN authentication.resources ON role_resources.resource_id = resources.resource_id").
+		Where("resources.resource_id = ?", resource.ResourceID).
+		Find(&roles).Error
+	if err != nil {
+		return nil, err
+	}
+	return &roles, nil
+}

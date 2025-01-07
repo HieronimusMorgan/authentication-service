@@ -47,8 +47,8 @@ func (h AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	err := h.UserSession.AddUserSession(user.(out.LoginResponse).UserID, user.(out.LoginResponse).Token,
-		user.(out.LoginResponse).RefreshToken, c.ClientIP(), "WEB")
+	err := h.UserSession.AddUserSession(user.UserID, user.Token,
+		user.RefreshToken, c.ClientIP(), "WEB")
 
 	if err != nil {
 		handleErrorResponse(c, http.StatusInternalServerError, "Failed to create user session", err)
@@ -61,6 +61,12 @@ func (h AuthHandler) Register(c *gin.Context) {
 func (h AuthHandler) Login(c *gin.Context) {
 	var errs = response.ErrorResponse{}
 	var req in.LoginRequest
+	var deviceID = c.GetHeader("Device-ID")
+
+	if deviceID != "WEB" && deviceID != "MOBILE" {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-ID", nil)
+		return
+	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
@@ -74,7 +80,7 @@ func (h AuthHandler) Login(c *gin.Context) {
 	}
 
 	err := h.UserSession.AddUserSession(user.(out.LoginResponse).UserID, user.(out.LoginResponse).Token,
-		user.(out.LoginResponse).RefreshToken, c.ClientIP(), "WEB")
+		user.(out.LoginResponse).RefreshToken, c.ClientIP(), deviceID)
 
 	if err != nil {
 		handleErrorResponse(c, http.StatusInternalServerError, "Failed to create user session", err)

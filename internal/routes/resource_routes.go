@@ -13,12 +13,13 @@ func ResourceRoutes(r *gin.Engine, db *gorm.DB) {
 
 	// Public Routes
 	protected := r.Group("/auth/v1/resources")
-	protected.Use(middleware.AuthMiddleware())
+	protected.Use(middleware.AuthMiddleware(db))
 	{
 		protected.POST("/add", resourceHandler.AddResource)
 		protected.POST("/update/:id", resourceHandler.UpdateResource)
 		protected.POST("/assign-role", resourceHandler.AssignResourceToRole)
 		protected.GET("", resourceHandler.GetResources)
+		protected.GET("/roles", resourceHandler.GetResourceRoles)
 		protected.GET("/:id", resourceHandler.GetResourcesById)
 		protected.GET("/user/:id", resourceHandler.GetResourceUserById)
 		protected.DELETE("/:id", resourceHandler.DeleteResourceById)

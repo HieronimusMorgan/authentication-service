@@ -111,7 +111,7 @@ CREATE TABLE user_sessions
 (
     user_session_id SERIAL PRIMARY KEY,
     user_id         BIGINT              NOT NULL,
-    session_token   VARCHAR(255) UNIQUE NOT NULL,
+    session_token TEXT UNIQUE NOT NULL,
     refresh_token   VARCHAR(255) UNIQUE,
     ip_address      VARCHAR(45),
     user_agent      TEXT,
@@ -135,7 +135,8 @@ VALUES ('Super Admin', 'Super Administrator with highest privileges', CURRENT_TI
        ('User', 'Regular user with limited access', CURRENT_TIMESTAMP, 'system');
 
 INSERT INTO resources (name, description, created_at, created_by)
-VALUES ('System Management', 'Operations for managing the entire system', CURRENT_TIMESTAMP, 'system'),
+VALUES ('New Resource', 'Description of the new resource', CURRENT_TIMESTAMP, 'system'),
+       ('System Management', 'Operations for managing the entire system', CURRENT_TIMESTAMP, 'system'),
        ('Auth', 'Authentication-related operations', CURRENT_TIMESTAMP, 'system'),
        ('Master', 'Master data management operations', CURRENT_TIMESTAMP, 'system');
 
@@ -149,7 +150,10 @@ FROM resources;
 
 -- Assign resources to Admin role
 INSERT INTO role_resources (role_id, resource_id, created_at, created_by)
-VALUES ((SELECT role_id FROM roles WHERE name = 'Admin'), (SELECT resource_id FROM resources WHERE name = 'Auth'),
+VALUES ((SELECT role_id FROM roles WHERE name = 'Admin'),
+        (SELECT resource_id FROM resources WHERE name = 'New Resource'),
+        CURRENT_TIMESTAMP, 'system'),
+       ((SELECT role_id FROM roles WHERE name = 'Admin'), (SELECT resource_id FROM resources WHERE name = 'Auth'),
         CURRENT_TIMESTAMP, 'system'),
        ((SELECT role_id FROM roles WHERE name = 'Admin'), (SELECT resource_id FROM resources WHERE name = 'Master'),
         CURRENT_TIMESTAMP, 'system');
@@ -172,6 +176,13 @@ VALUES ('super-admin-client-id',
         (SELECT role_id FROM roles WHERE name = 'Super Admin'),
         'system',
         'system');
+
+INSERT INTO user_roles (user_id, role_id, created_at, created_by)
+VALUES ((SELECT user_id FROM users WHERE username = 'super_admin'), -- Super Admin user ID
+        (SELECT role_id FROM roles WHERE name = 'Super Admin'), -- Super Admin role ID
+        CURRENT_TIMESTAMP, -- Current timestamp
+        'system' -- Created by system
+       );
 
 -- Function to update updated_at column
 CREATE
@@ -227,6 +238,3 @@ CREATE TRIGGER set_updated_at_internal_tokens
     ON internal_tokens
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
-
-
-

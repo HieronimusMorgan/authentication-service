@@ -272,3 +272,63 @@ func (s ResourceService) GetResourceUserById(resourceID uint, clientID string) (
 
 	return data, nil
 }
+
+func (s ResourceService) GetResourceRoles(clientID string) (interface{}, error) {
+	user, err := s.UserRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.checkUserIsAdmin(user)
+	if err != nil {
+		return nil, err
+	}
+
+	resources, err := s.ResourceRepository.GetAllResources()
+	if err != nil {
+		return nil, err
+	}
+
+	var resourceResponses []struct {
+		ResourceID   uint
+		ResourceName string
+		Roles        []struct {
+			RoleID   uint
+			RoleName string
+		}
+	}
+
+	for _, resource := range *resources {
+		roles, err := s.RoleRepository.GetAllRolesByResourceId(&resource)
+		if err != nil {
+			return nil, err
+		}
+		var roleResponses []struct {
+			RoleID   uint
+			RoleName string
+		}
+		for _, role := range *roles {
+			roleResponses = append(roleResponses, struct {
+				RoleID   uint
+				RoleName string
+			}{
+				RoleID:   role.RoleID,
+				RoleName: role.Name,
+			})
+		}
+		resourceResponses = append(resourceResponses, struct {
+			ResourceID   uint
+			ResourceName string
+			Roles        []struct {
+				RoleID   uint
+				RoleName string
+			}
+		}{
+			ResourceID:   resource.ResourceID,
+			ResourceName: resource.Name,
+			Roles:        roleResponses,
+		})
+	}
+
+	return resourceResponses, nil
+}

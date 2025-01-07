@@ -154,3 +154,52 @@ func (s RoleService) DeleteRole(roleID uint, clientID string) error {
 
 	return nil
 }
+
+func (s RoleService) GetListRoleUsers(clientID string) (interface{}, error) {
+	_, err := s.UserRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return nil, err
+	}
+
+	roles, err := s.RoleRepository.GetAllRoles()
+	if err != nil {
+		return nil, err
+	}
+
+	var roleResponses []struct {
+		RoleID uint               `json:"role_id"`
+		Name   string             `json:"name"`
+		Users  []out.UserResponse `json:"users"`
+	}
+	for _, role := range *roles {
+		users, err := s.UserRepository.GetUserByRole(role.RoleID)
+		if err != nil {
+			return nil, err
+		}
+
+		var userResponses []out.UserResponse
+		for _, user := range *users {
+			userResponses = append(userResponses, out.UserResponse{
+				UserID:         user.UserID,
+				ClientID:       user.ClientID,
+				Username:       user.Username,
+				FirstName:      user.FirstName,
+				LastName:       user.LastName,
+				PhoneNumber:    user.PhoneNumber,
+				ProfilePicture: user.ProfilePicture,
+			})
+		}
+
+		roleResponses = append(roleResponses, struct {
+			RoleID uint               `json:"role_id"`
+			Name   string             `json:"name"`
+			Users  []out.UserResponse `json:"users"`
+		}{
+			RoleID: role.RoleID,
+			Name:   role.Name,
+			Users:  userResponses,
+		})
+	}
+
+	return roleResponses, nil
+}

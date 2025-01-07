@@ -67,7 +67,11 @@ func (h ResourceHandler) UpdateResource(ctx *gin.Context) {
 	}
 
 	resource, err := h.ResourceService.UpdateResource(resourceID, &req.Name, &req.Description, token.ClientID)
-	response.SendResponse(ctx, 200, "Resource updated successfully", resource, err.Error())
+	if err != nil {
+		response.SendResponse(ctx, 400, "Failed to update resource", nil, err.Error())
+		return
+	}
+	response.SendResponse(ctx, 200, "Resource updated successfully", resource, nil)
 }
 
 func (h ResourceHandler) GetResources(ctx *gin.Context) {
@@ -77,7 +81,11 @@ func (h ResourceHandler) GetResources(ctx *gin.Context) {
 	}
 
 	resources, err := h.ResourceService.GetResources(token.ClientID)
-	response.SendResponse(ctx, 200, "Resources retrieved successfully", resources, err.Error())
+	if err != nil {
+		response.SendResponse(ctx, 500, "Failed to get resources", nil, err.Error())
+		return
+	}
+	response.SendResponse(ctx, 200, "Resources retrieved successfully", resources, nil)
 }
 
 func (h ResourceHandler) AssignResourceToRole(ctx *gin.Context) {
@@ -151,4 +159,19 @@ func (h ResourceHandler) GetResourceUserById(ctx *gin.Context) {
 	}
 
 	response.SendResponse(ctx, 200, "Users retrieved successfully", users, nil)
+}
+
+func (h ResourceHandler) GetResourceRoles(context *gin.Context) {
+	token, err := extractClaims(context)
+	if err != nil {
+		return
+	}
+
+	roles, err := h.ResourceService.GetResourceRoles(token.ClientID)
+	if err != nil {
+		response.SendResponse(context, 500, "Failed to get roles", nil, err.Error())
+		return
+	}
+
+	response.SendResponse(context, 200, "Roles retrieved successfully", roles, nil)
 }

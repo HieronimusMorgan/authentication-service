@@ -28,7 +28,7 @@ func AuthRoutes(r *gin.Engine, db *gorm.DB) {
 
 	// Admin routes: Require authentication middleware
 	admin := r.Group("/auth/v1")
-	admin.Use(middleware.AuthMiddleware())
+	admin.Use(middleware.AuthMiddleware(db))
 	{
 		admin.GET("/users", authHandler.GetListUser)
 		admin.POST("/user/update-role/:id", authHandler.UpdateRole)

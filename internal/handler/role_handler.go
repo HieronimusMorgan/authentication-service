@@ -157,3 +157,18 @@ func (h RoleHandler) DeleteRoleById(ctx *gin.Context) {
 
 	response.SendResponse(ctx, 200, "Role deleted successfully", nil, nil)
 }
+
+func (h RoleHandler) GetListRoleUsers(context *gin.Context) {
+	token, err := extractAndValidateToken(context)
+	if err != nil {
+		return
+	}
+
+	users, err := h.RoleService.GetListRoleUsers(token.ClientID)
+	if err != nil {
+		response.SendResponse(context, 500, "Failed to get list of role users", nil, err.Error())
+		return
+	}
+
+	response.SendResponse(context, 200, "Role users retrieved successfully", users, nil)
+}
