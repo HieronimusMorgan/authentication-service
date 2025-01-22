@@ -60,6 +60,8 @@ func (s UsersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 		return err
 	}
 
+	_ = utils.SaveDataToRedis(utils.UserSession, user.ClientID, session)
+
 	return nil
 }
 
@@ -82,8 +84,7 @@ func (s UsersSessionService) LogoutSession(userID uint) error {
 	session.LogoutTime = &currentTime
 	session.UpdatedBy = user.FullName
 
-	_ = utils.DeleteDataFromRedis(utils.Token, user.ClientID)
-	_ = utils.DeleteDataFromRedis(utils.User, user.ClientID)
+	_ = utils.SaveDataToRedis(utils.UserSession, user.ClientID, session)
 
 	return s.UserSessionRepository.UpdateSession(session)
 }
