@@ -1,14 +1,12 @@
 package routes
 
 import (
+	"authentication/config"
 	"authentication/internal/handler"
-	"authentication/internal/middleware"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-func AuthRoutes(r *gin.Engine, db *gorm.DB) {
-	authHandler := handler.NewAuthHandler(db)
+func AuthRoutes(r *gin.Engine, middleware config.Middleware, authHandler handler.AuthHandler) {
 
 	// Public routes: No middleware applied
 	public := r.Group("/auth/v1")
@@ -17,18 +15,16 @@ func AuthRoutes(r *gin.Engine, db *gorm.DB) {
 		public.POST("/login", authHandler.Login)
 	}
 
-	// Protected routes: Require general middleware
 	protected := r.Group("/auth/v1")
-	protected.Use(middleware.Middleware())
+	protected.Use(middleware.AuthMiddleware.Handler())
 	{
 		protected.GET("/profile", authHandler.GetProfile)
 		protected.POST("/change-password", authHandler.ChangePassword)
 		public.GET("/logout", authHandler.Logout)
 	}
 
-	// Admin routes: Require authentication middleware
 	admin := r.Group("/auth/v1")
-	admin.Use(middleware.AuthMiddleware(db))
+	admin.Use(middleware.AdminMiddleware.Handler())
 	{
 		admin.GET("/users", authHandler.GetListUser)
 		admin.POST("/user/update-role/:id", authHandler.UpdateRole)

@@ -5,50 +5,68 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserRepository struct {
-	DB *gorm.DB
+type UserRepository interface {
+	RegisterUser(user **models.Users) error
+	GetUserByEmail(email string) (*models.Users, error)
+	GetUserByID(id uint) (*models.Users, error)
+	UpdateUser(user **models.Users) error
+	DeleteUser(user *models.Users) error
+	GetAllUsers() (*[]models.Users, error)
+	GetUsers() (*[]models.Users, error)
+	GetUserByRole(role uint) (*[]models.Users, error)
+	GetUserByClientID(clientID string) (*models.Users, error)
+	GetUserByClientAndRole(clientID, roleID uint) (*[]models.Users, error)
+	DeleteUserByID(id uint) error
+	UpdateRole(user *models.Users) error
+	GetListUser() (*[]models.Users, error)
+	GetUserByResourceID(resourceID uint) (*[]models.Users, error)
+	ChangePassword(user *models.Users) error
 }
 
-func NewUserRepository(db *gorm.DB) *UserRepository {
-	return &UserRepository{DB: db}
+type userRepository struct {
+	db *gorm.DB
 }
 
-func (r UserRepository) RegisterUser(user **models.Users) error {
-	err := r.DB.Create(user).Error
+func NewUserRepository(db *gorm.DB) UserRepository {
+	return &userRepository{db: db}
+}
+
+func (r userRepository) RegisterUser(user **models.Users) error {
+	err := r.db.Create(user).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r UserRepository) GetUserByEmail(email string) (*models.Users, error) {
+func (r userRepository) GetUserByEmail(email string) (*models.Users, error) {
 	var user models.Users
-	err := r.DB.Where("email = ?", email).First(&user).Error
+	err := r.db.Where("email = ?", email).First(&user).Error
 	if err != nil {
 		return nil, err
 	}
 	return &user, nil
 }
 
-func (r UserRepository) GetUserByID(id uint) (*models.Users, error) {
+func (r userRepository) GetUserByID(id uint) (*models.Users, error) {
 	var user models.Users
-	err := r.DB.Where("user_id = ?", id).First(&user).Error
+	err := r.db.Where("user_id = ?", id).First(&user).Error
 	if err != nil {
 		return nil, err
 	}
 	return &user, nil
 }
 
-func (r UserRepository) UpdateUser(user **models.Users) error {
-	err := r.DB.Save(user).Error
+func (r userRepository) UpdateUser(user **models.Users) error {
+	err := r.db.Save(user).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r UserRepository) DeleteUser(user *models.Users) error {
-	err := r.DB.Model(&user).
+func (r userRepository) DeleteUser(user *models.Users) error {
+	err := r.db.Model(&user).
 		Update("deleted_by", user.DeletedBy).
 		Delete(&user).Error
 	if err != nil {
@@ -57,61 +75,61 @@ func (r UserRepository) DeleteUser(user *models.Users) error {
 	return nil
 }
 
-func (r UserRepository) GetAllUsers() (*[]models.Users, error) {
+func (r userRepository) GetAllUsers() (*[]models.Users, error) {
 	var users []models.Users
-	err := r.DB.Find(&users).Error
+	err := r.db.Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
 	return &users, nil
 }
 
-func (r UserRepository) GetUsers() (*[]models.Users, error) {
+func (r userRepository) GetUsers() (*[]models.Users, error) {
 	var users []models.Users
-	err := r.DB.Where("deleted_at IS NOT NULL").Find(&users).Error
+	err := r.db.Where("deleted_at IS NOT NULL").Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
 	return &users, nil
 }
 
-func (r UserRepository) GetUserByRole(role uint) (*[]models.Users, error) {
+func (r userRepository) GetUserByRole(role uint) (*[]models.Users, error) {
 	var users []models.Users
-	err := r.DB.Where("role_id = ?", role).Find(&users).Error
+	err := r.db.Where("role_id = ?", role).Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
 	return &users, nil
 }
 
-func (r UserRepository) GetUserByClientID(clientID string) (*models.Users, error) {
+func (r userRepository) GetUserByClientID(clientID string) (*models.Users, error) {
 	var users models.Users
-	err := r.DB.Where("client_id = ?", clientID).Find(&users).Error
+	err := r.db.Where("client_id = ?", clientID).Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
 	return &users, nil
 }
 
-func (r UserRepository) GetUserByClientAndRole(clientID, roleID uint) (*[]models.Users, error) {
+func (r userRepository) GetUserByClientAndRole(clientID, roleID uint) (*[]models.Users, error) {
 	var users []models.Users
-	err := r.DB.Where("client_id = ? AND role_id = ?", clientID, roleID).Find(&users).Error
+	err := r.db.Where("client_id = ? AND role_id = ?", clientID, roleID).Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
 	return &users, nil
 }
 
-func (r UserRepository) DeleteUserByID(id uint) error {
-	err := r.DB.Where("user_id = ?", id).Delete(&models.Users{}).Error
+func (r userRepository) DeleteUserByID(id uint) error {
+	err := r.db.Where("user_id = ?", id).Delete(&models.Users{}).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r UserRepository) UpdateRole(user *models.Users) error {
-	err := r.DB.Model(&user).
+func (r userRepository) UpdateRole(user *models.Users) error {
+	err := r.db.Model(&user).
 		Update("role_id", user.RoleID).
 		Update("updated_by", user.UpdatedBy).
 		Error
@@ -121,18 +139,18 @@ func (r UserRepository) UpdateRole(user *models.Users) error {
 	return nil
 }
 
-func (r UserRepository) GetListUser() (*[]models.Users, error) {
+func (r userRepository) GetListUser() (*[]models.Users, error) {
 	var users []models.Users
-	err := r.DB.Preload("Role").Find(&users).Where("delete_at IS NULL").Error
+	err := r.db.Preload("Role").Find(&users).Where("delete_at IS NULL").Error
 	if err != nil {
 		return nil, err
 	}
 	return &users, nil
 }
 
-func (r UserRepository) GetUserByResourceID(resourceID uint) (*[]models.Users, error) {
+func (r userRepository) GetUserByResourceID(resourceID uint) (*[]models.Users, error) {
 	var users []models.Users
-	err := r.DB.Preload("Role").Joins("JOIN authentication.role_resources rr ON rr.role_id = users.role_id").
+	err := r.db.Preload("Role").Joins("JOIN authentication.role_resources rr ON rr.role_id = users.role_id").
 		Joins("JOIN authentication.resources r ON r.resource_id = rr.resource_id").
 		Where("r.resource_id = ?", resourceID).
 		Find(&users).Error
@@ -142,8 +160,8 @@ func (r UserRepository) GetUserByResourceID(resourceID uint) (*[]models.Users, e
 	return &users, nil
 }
 
-func (r UserRepository) ChangePassword(user *models.Users) error {
-	err := r.DB.Model(&user).
+func (r userRepository) ChangePassword(user *models.Users) error {
+	err := r.db.Model(&user).
 		Update("password", user.Password).
 		Update("updated_by", user.UpdatedBy).
 		Error

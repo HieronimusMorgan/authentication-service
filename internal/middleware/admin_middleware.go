@@ -7,25 +7,25 @@ import (
 	"net/http"
 )
 
-// AuthMiddleware defines the contract for authentication middleware
-type AuthMiddleware interface {
+// AdminMiddleware defines the contract for authentication middleware
+type AdminMiddleware interface {
 	Handler() gin.HandlerFunc
 }
 
-// authMiddleware is the struct that implements AuthMiddleware
-type authMiddleware struct {
+// adminMiddleware is the struct that implements AdminMiddleware
+type adminMiddleware struct {
 	JWTService utils.JWTService
 }
 
-// NewAuthMiddleware initializes authentication middleware
-func NewAuthMiddleware(jwtService utils.JWTService) AuthMiddleware {
-	return authMiddleware{
+// NewAdminMiddleware initializes authentication middleware
+func NewAdminMiddleware(jwtService utils.JWTService) AdminMiddleware {
+	return adminMiddleware{
 		JWTService: jwtService,
 	}
 }
 
 // Handler returns a middleware function for JWT validation
-func (a authMiddleware) Handler() gin.HandlerFunc {
+func (a adminMiddleware) Handler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
 		if token == "" {
@@ -34,7 +34,7 @@ func (a authMiddleware) Handler() gin.HandlerFunc {
 			return
 		}
 
-		_, err := a.JWTService.ValidateToken(token)
+		_, err := a.JWTService.ValidateTokenAdmin(token)
 		if err != nil {
 			response.SendResponse(c, http.StatusUnauthorized, "Invalid token", nil, err.Error())
 			c.Abort()

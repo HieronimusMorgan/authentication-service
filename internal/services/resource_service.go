@@ -5,24 +5,28 @@ import (
 	"authentication/internal/models"
 	"authentication/internal/repository"
 	"errors"
-	"gorm.io/gorm"
 	"strings"
 )
 
 type ResourceService struct {
-	ResourceRepository     *repository.ResourceRepository
-	RoleResourceRepository *repository.RoleResourceRepository
-	RoleRepository         *repository.RoleRepository
-	UserRepository         *repository.UserRepository
+	ResourceRepository     repository.ResourceRepository
+	RoleResourceRepository repository.RoleResourceRepository
+	RoleRepository         repository.RoleRepository
+	UserRepository         repository.UserRepository
 }
 
-func NewResourceService(db *gorm.DB) *ResourceService {
-	resourceRepo := repository.NewResourceRepository(db)
-	roleResourceRepo := repository.NewRoleResourceRepository(db)
-	roleRepo := repository.NewRoleRepository(db)
-	userRepo := repository.NewUserRepository(db)
-	return &ResourceService{ResourceRepository: resourceRepo, UserRepository: userRepo,
-		RoleRepository: roleRepo, RoleResourceRepository: roleResourceRepo}
+func NewResourceService(
+	resourceRepo repository.ResourceRepository,
+	roleResourceRepo repository.RoleResourceRepository,
+	roleRepo repository.RoleRepository,
+	userRepo repository.UserRepository,
+) ResourceService {
+	return ResourceService{
+		ResourceRepository:     resourceRepo,
+		RoleResourceRepository: roleResourceRepo,
+		RoleRepository:         roleRepo,
+		UserRepository:         userRepo,
+	}
 }
 
 func (s ResourceService) checkUserIsAdmin(user *models.Users) error {

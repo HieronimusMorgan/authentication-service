@@ -7,28 +7,33 @@ import (
 	"authentication/internal/repository"
 	"authentication/internal/utils"
 	"authentication/package/response"
-	"gorm.io/gorm"
 	"net/http"
 	"strings"
 )
 
 type AuthService struct {
-	AuthRepository         *repository.AuthRepository
-	ResourceRepository     *repository.ResourceRepository
-	RoleRepository         *repository.RoleRepository
-	RoleResourceRepository *repository.RoleResourceRepository
-	UserRepository         *repository.UserRepository
-	UserRoleRepository     *repository.UserRoleRepository
+	AuthRepository         repository.AuthRepository
+	ResourceRepository     repository.ResourceRepository
+	RoleRepository         repository.RoleRepository
+	RoleResourceRepository repository.RoleResourceRepository
+	UserRepository         repository.UserRepository
+	UserRoleRepository     repository.UserRoleRepository
+	UserSessionRepository  repository.UserSessionRepository
+	RedisService           utils.RedisService
+	JWTService             utils.JWTService
 }
 
-func NewAuthService(db *gorm.DB) *AuthService {
-	return &AuthService{
-		AuthRepository:         repository.NewAuthRepository(db),
-		ResourceRepository:     repository.NewResourceRepository(db),
-		RoleRepository:         repository.NewRoleRepository(db),
-		RoleResourceRepository: repository.NewRoleResourceRepository(db),
-		UserRepository:         repository.NewUserRepository(db),
-		UserRoleRepository:     repository.NewUserRoleRepository(db),
+func NewAuthService(authRepo repository.AuthRepository, resourceRepo repository.ResourceRepository, roleRepo repository.RoleRepository, roleResourceRepo repository.RoleResourceRepository, userRepo repository.UserRepository, userRoleRepo repository.UserRoleRepository, userSessionRepo repository.UserSessionRepository, redis utils.RedisService, jwtService utils.JWTService) AuthService {
+	return AuthService{
+		AuthRepository:         authRepo,
+		ResourceRepository:     resourceRepo,
+		RoleRepository:         roleRepo,
+		RoleResourceRepository: roleResourceRepo,
+		UserRepository:         userRepo,
+		UserRoleRepository:     userRoleRepo,
+		UserSessionRepository:  userSessionRepo,
+		RedisService:           redis,
+		JWTService:             jwtService,
 	}
 }
 
@@ -120,7 +125,7 @@ func (s AuthService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 	}
 
 	user.Role = *role
-	token, err := utils.GenerateToken(*user)
+	token, err := s.JWTService.GenerateToken(*user)
 	if err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -129,8 +134,8 @@ func (s AuthService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		}
 	}
 
-	_ = utils.SaveDataToRedis(utils.Token, user.ClientID, token)
-	_ = utils.SaveDataToRedis(utils.User, user.ClientID, user)
+	_ = s.RedisService.SaveData(utils.Token, user.ClientID, token)
+	_ = s.RedisService.SaveData(utils.User, user.ClientID, user)
 
 	responses := out.RegisterResponse{
 		UserID:         user.UserID,
@@ -165,7 +170,7 @@ func (s AuthService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
 	user.Role = *role
 
-	token, err := utils.GenerateToken(*user)
+	token, err := s.JWTService.GenerateToken(*user)
 	if err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -174,8 +179,8 @@ func (s AuthService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 		}
 	}
 
-	_ = utils.SaveDataToRedis("token", user.ClientID, token)
-	_ = utils.SaveDataToRedis("user", user.ClientID, user)
+	_ = s.RedisService.SaveData("token", user.ClientID, token)
+	_ = s.RedisService.SaveData("user", user.ClientID, user)
 
 	responses := out.LoginResponse{
 		UserID:         user.UserID,
@@ -191,7 +196,7 @@ func (s AuthService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 }
 
 func (s AuthService) GetProfile(token string) (*out.UserResponse, response.ErrorResponse) {
-	claims, err := utils.ExtractClaims(token)
+	claims, err := s.JWTService.ExtractClaims(token)
 	if err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -224,7 +229,7 @@ func (s AuthService) RegisterInternalToken(req *struct {
 		}
 	}
 
-	token, err := utils.GenerateInternalToken(resource.Name)
+	token, err := s.JWTService.GenerateInternalToken(resource.Name)
 	if err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,

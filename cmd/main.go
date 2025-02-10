@@ -1,32 +1,41 @@
 package main
 
 import (
-	"authentication/internal/database"
+	"authentication/config"
 	"authentication/internal/routes"
-	"authentication/internal/utils"
 	"github.com/gin-gonic/gin"
 	"log"
 )
 
 func main() {
-	// Initialize Redis
-	utils.InitializeRedis()
+	serverConfig, err := config.NewServerConfig()
+	if err != nil {
+		log.Fatalf("❌ Failed to initialize server: %v", err)
+	}
 
-	// Initialize database
-	db := database.InitDB()
-	defer database.CloseDB(db)
+	// Ensure database connection closes when the server shuts down
+	defer func() {
+		sqlDB, _ := serverConfig.DB.DB()
+		sqlDB.Close()
+		log.Println("✅ Database connection closed")
+	}()
 
-	// Setup Gin router
+	// Start server config (Ensure everything is ready)
+	if err := serverConfig.Start(); err != nil {
+		log.Fatalf("❌ Error starting server: %v", err)
+	}
+
+	// Initialize Router
 	r := gin.Default()
 
 	// Register routes
-	routes.ResourceRoutes(r, db)
-	routes.AuthRoutes(r, db)
-	routes.RoleRoutes(r, db)
+	routes.ResourceRoutes(r, serverConfig.Handler.ResourceHandler)
+	routes.AuthRoutes(r, serverConfig.Middleware, serverConfig.Handler.AuthHandler)
+	routes.RoleRoutes(r, serverConfig.Handler.RoleHandler)
 
 	// Run server
 	log.Println("Starting server on :8080")
-	err := r.Run(":8080")
+	err = r.Run(":8080")
 	if err != nil {
 		return
 	}

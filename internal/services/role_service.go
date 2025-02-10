@@ -6,19 +6,23 @@ import (
 	"authentication/internal/repository"
 	"encoding/json"
 	"errors"
-	"gorm.io/gorm"
 	"log"
 )
 
 type RoleService struct {
-	RoleRepository *repository.RoleRepository
-	UserRepository *repository.UserRepository
+	RoleRepository repository.RoleRepository
+	UserRepository repository.UserRepository
 }
 
-func NewRoleService(db *gorm.DB) *RoleService {
-	roleRepo := repository.NewRoleRepository(db)
-	userRepo := repository.NewUserRepository(db)
-	return &RoleService{RoleRepository: roleRepo, UserRepository: userRepo}
+// NewRoleService initializes RoleService with repository dependencies
+func NewRoleService(
+	roleRepo repository.RoleRepository,
+	userRepo repository.UserRepository,
+) RoleService {
+	return RoleService{
+		RoleRepository: roleRepo,
+		UserRepository: userRepo,
+	}
 }
 
 func (s RoleService) RegisterRole(req *struct {

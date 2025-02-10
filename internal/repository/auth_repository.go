@@ -10,34 +10,43 @@ import (
 	"time"
 )
 
-type AuthRepository struct {
-	DB *gorm.DB
+type AuthRepository interface {
+	CreateUser(user *models.Users) error
+	GetUserByUsername(username string) (*models.Users, error)
+	GetUserByClientID(clientID string) (*out.UserResponse, error)
+	AssignUserResource(userID uint, resourceID uint) (*AssignResource, error)
+	AssignUserResourceByName(userID uint, resourceName string) (*AssignResource, error)
 }
 
-func NewAuthRepository(db *gorm.DB) *AuthRepository {
-	return &AuthRepository{DB: db}
+type authRepository struct {
+	db *gorm.DB
 }
 
-func (r AuthRepository) CreateUser(user *models.Users) error {
-	return r.DB.Create(user).Error
+// NewAuthRepository creates a new repository instance
+func NewAuthRepository(db *gorm.DB) AuthRepository {
+	return &authRepository{db: db}
 }
 
-func (r AuthRepository) GetUserByUsername(username string) (*models.Users, error) {
+func (r authRepository) CreateUser(user *models.Users) error {
+	return r.db.Create(user).Error
+}
+
+func (r authRepository) GetUserByUsername(username string) (*models.Users, error) {
 	var user models.Users
-	err := r.DB.Preload("Role").Where("username = ?", username).First(&user).Error
+	err := r.db.Preload("Role").Where("username = ?", username).First(&user).Error
 	return &user, err
 }
 
-func (r AuthRepository) GetUserByClientID(clientID string) (*out.UserResponse, error) {
+func (r authRepository) GetUserByClientID(clientID string) (*out.UserResponse, error) {
 	var user out.UserResponse
-	err := r.DB.Table("authentication.users").Where("client_id = ?", clientID).First(&user).Error
+	err := r.db.Table("authentication.users").Where("client_id = ?", clientID).First(&user).Error
 	return &user, err
 }
 
-func (r AuthRepository) AssignUserResource(userID uint, resourceID uint) (*AssignResource, error) {
+func (r authRepository) AssignUserResource(userID uint, resourceID uint) (*AssignResource, error) {
 	// Validate user
 	var user models.Users
-	if err := r.DB.Preload("Role").First(&user, userID).Error; err != nil {
+	if err := r.db.Preload("Role").First(&user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
@@ -46,7 +55,7 @@ func (r AuthRepository) AssignUserResource(userID uint, resourceID uint) (*Assig
 
 	// Validate resource
 	var resource models.Resource
-	if err := r.DB.First(&resource, resourceID).Error; err != nil {
+	if err := r.db.First(&resource, resourceID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("resource not found")
 		}
@@ -54,7 +63,7 @@ func (r AuthRepository) AssignUserResource(userID uint, resourceID uint) (*Assig
 	}
 
 	var role models.Role
-	if err := r.DB.First(&role, user.RoleID).Error; err != nil {
+	if err := r.db.First(&role, user.RoleID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("role not found")
 		}
@@ -63,7 +72,7 @@ func (r AuthRepository) AssignUserResource(userID uint, resourceID uint) (*Assig
 
 	// Check if the user already has the resource assigned
 	var existingAssignment models.RoleResource
-	err := r.DB.Where("role_id = ? AND resource_id = ?", user.RoleID, resource.ResourceID).First(&existingAssignment).Error
+	err := r.db.Where("role_id = ? AND resource_id = ?", user.RoleID, resource.ResourceID).First(&existingAssignment).Error
 	if err == nil {
 		jsonData, _ := json.Marshal(existingAssignment)
 		log.Printf(string(jsonData))
@@ -84,12 +93,12 @@ func (r AuthRepository) AssignUserResource(userID uint, resourceID uint) (*Assig
 		CreatedBy:  "system",
 	}
 
-	if err := r.DB.Create(&roleResource).Error; err != nil {
+	if err := r.db.Create(&roleResource).Error; err != nil {
 		return nil, err
 	}
 
 	var existingUserRoles models.UserRole
-	err = r.DB.Where("user_id = ? AND role_id = ?", user.UserID, role.RoleID).First(&existingUserRoles).Error
+	err = r.db.Where("user_id = ? AND role_id = ?", user.UserID, role.RoleID).First(&existingUserRoles).Error
 	if err != nil {
 
 	}
@@ -104,10 +113,10 @@ func (r AuthRepository) AssignUserResource(userID uint, resourceID uint) (*Assig
 	}, nil
 }
 
-func (r AuthRepository) AssignUserResourceByName(userID uint, resourceName string) (*AssignResource, error) {
+func (r authRepository) AssignUserResourceByName(userID uint, resourceName string) (*AssignResource, error) {
 	// Validate user
 	var user models.Users
-	if err := r.DB.Preload("Role").First(&user, userID).Error; err != nil {
+	if err := r.db.Preload("Role").First(&user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
@@ -116,7 +125,7 @@ func (r AuthRepository) AssignUserResourceByName(userID uint, resourceName strin
 
 	// Validate resource by name
 	var resource models.Resource
-	if err := r.DB.Where("name = ?", resourceName).First(&resource).Error; err != nil {
+	if err := r.db.Where("name = ?", resourceName).First(&resource).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("resource not found")
 		}
@@ -125,7 +134,7 @@ func (r AuthRepository) AssignUserResourceByName(userID uint, resourceName strin
 
 	// Check if the user already has the resource assigned
 	var existingAssignment models.RoleResource
-	err := r.DB.Where("role_id = ? AND resource_id = ?", user.RoleID, resource.ResourceID).First(&existingAssignment).Error
+	err := r.db.Where("role_id = ? AND resource_id = ?", user.RoleID, resource.ResourceID).First(&existingAssignment).Error
 	if err == nil {
 		return &AssignResource{
 			UserID:     userID,
@@ -144,7 +153,7 @@ func (r AuthRepository) AssignUserResourceByName(userID uint, resourceName strin
 		CreatedBy:  "system",
 	}
 
-	if err := r.DB.Create(&roleResource).Error; err != nil {
+	if err := r.db.Create(&roleResource).Error; err != nil {
 		return nil, err
 	}
 

@@ -4,28 +4,38 @@ import (
 	"authentication/internal/models"
 	"authentication/internal/repository"
 	"authentication/internal/utils"
-	"gorm.io/gorm"
 	"time"
 )
 
+// UsersSessionService manages user session operations
 type UsersSessionService struct {
-	UserSessionRepository *repository.UserSessionRepository
-	UserRepository        *repository.UserRepository
+	UserSessionRepository repository.UserSessionRepository
+	UserRepository        repository.UserRepository
+	JWTService            utils.JWTService
+	Redis                 utils.RedisService
 }
 
-func NewUsersSessionService(db *gorm.DB) *UsersSessionService {
-	userSessionRepo := repository.NewUserSessionRepository(db)
-	userRepo := repository.NewUserRepository(db)
-	return &UsersSessionService{UserSessionRepository: userSessionRepo, UserRepository: userRepo}
+// NewUsersSessionService initializes UsersSessionService with repository dependencies
+func NewUsersSessionService(
+	userSessionRepo repository.UserSessionRepository,
+	userRepo repository.UserRepository,
+	jwtService utils.JWTService,
+	redis utils.RedisService,
+) UsersSessionService {
+	return UsersSessionService{
+		UserSessionRepository: userSessionRepo,
+		UserRepository:        userRepo,
+		JWTService:            jwtService,
+		Redis:                 redis,
+	}
 }
-
 func (s UsersSessionService) AddUserSession(userID uint, token, refreshToken, ipAddress, userAgent string) error {
 	user, err := s.UserRepository.GetUserByID(userID)
 	if err != nil {
 		return err
 	}
 
-	tokenClaims, err := utils.ExtractClaims(token)
+	tokenClaims, err := s.JWTService.ExtractClaims(token)
 	var userSession = &models.UserSession{
 		UserID:       userID,
 		SessionToken: token,
@@ -60,7 +70,7 @@ func (s UsersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 		return err
 	}
 
-	_ = utils.SaveDataToRedis(utils.UserSession, user.ClientID, session)
+	_ = s.Redis.SaveData(utils.UserSession, user.ClientID, session)
 
 	return nil
 }
@@ -84,7 +94,7 @@ func (s UsersSessionService) LogoutSession(userID uint) error {
 	session.LogoutTime = &currentTime
 	session.UpdatedBy = user.FullName
 
-	_ = utils.SaveDataToRedis(utils.UserSession, user.ClientID, session)
+	_ = s.Redis.SaveData(utils.UserSession, user.ClientID, session)
 
 	return s.UserSessionRepository.UpdateSession(session)
 }

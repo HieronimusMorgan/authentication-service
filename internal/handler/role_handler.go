@@ -5,26 +5,35 @@ import (
 	"authentication/internal/utils"
 	"authentication/package/response"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-type RoleHandler struct {
-	RoleService *services.RoleService
+type RoleHandler interface {
+	AddRole(ctx *gin.Context)
+	UpdateRole(ctx *gin.Context)
+	GetListRole(ctx *gin.Context)
+	GetRoleById(ctx *gin.Context)
+	DeleteRoleById(ctx *gin.Context)
+	GetListRoleUsers(ctx *gin.Context)
 }
 
-func NewRoleHandler(db *gorm.DB) *RoleHandler {
-	return &RoleHandler{RoleService: services.NewRoleService(db)}
+type roleHandler struct {
+	RoleService services.RoleService
+	JWTService  utils.JWTService
 }
 
-func extractAndValidateToken(context *gin.Context) (utils.TokenClaims, error) {
-	token, err := utils.ExtractClaims(context.GetHeader("Authorization"))
+func NewRoleHandler(db services.RoleService, jwtService utils.JWTService) RoleHandler {
+	return roleHandler{RoleService: db, JWTService: jwtService}
+}
+
+func extractAndValidateToken(context *gin.Context, service utils.JWTService) (utils.TokenClaims, error) {
+	token, err := service.ExtractClaims(context.GetHeader("Authorization"))
 	if err != nil {
 		response.SendResponse(context, 401, "Unauthorized", nil, err.Error())
 	}
 	return *token, err
 }
 
-func (h RoleHandler) AddRole(ctx *gin.Context) {
+func (h roleHandler) AddRole(ctx *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description" binding:"required"`
@@ -35,7 +44,7 @@ func (h RoleHandler) AddRole(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractAndValidateToken(ctx)
+	token, err := extractAndValidateToken(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -48,7 +57,7 @@ func (h RoleHandler) AddRole(ctx *gin.Context) {
 	response.SendResponse(ctx, 201, "Role registered successfully", role, nil)
 }
 
-func (h RoleHandler) UpdateRole(ctx *gin.Context) {
+func (h roleHandler) UpdateRole(ctx *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description" binding:"optional"`
@@ -76,7 +85,7 @@ func (h RoleHandler) UpdateRole(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractAndValidateToken(ctx)
+	token, err := extractAndValidateToken(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -89,8 +98,8 @@ func (h RoleHandler) UpdateRole(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Role updated successfully", role, nil)
 }
 
-func (h RoleHandler) GetListRole(ctx *gin.Context) {
-	token, err := extractAndValidateToken(ctx)
+func (h roleHandler) GetListRole(ctx *gin.Context) {
+	token, err := extractAndValidateToken(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -104,7 +113,7 @@ func (h RoleHandler) GetListRole(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Roles retrieved successfully", roles, nil)
 }
 
-func (h RoleHandler) GetRoleById(ctx *gin.Context) {
+func (h roleHandler) GetRoleById(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		response.SendResponse(ctx, 400, "Role ID is required", nil, nil)
@@ -117,7 +126,7 @@ func (h RoleHandler) GetRoleById(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractAndValidateToken(ctx)
+	token, err := extractAndValidateToken(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -131,7 +140,7 @@ func (h RoleHandler) GetRoleById(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Role retrieved successfully", role, nil)
 }
 
-func (h RoleHandler) DeleteRoleById(ctx *gin.Context) {
+func (h roleHandler) DeleteRoleById(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		response.SendResponse(ctx, 400, "Role ID is required", nil, nil)
@@ -144,7 +153,7 @@ func (h RoleHandler) DeleteRoleById(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractAndValidateToken(ctx)
+	token, err := extractAndValidateToken(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -158,8 +167,8 @@ func (h RoleHandler) DeleteRoleById(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Role deleted successfully", nil, nil)
 }
 
-func (h RoleHandler) GetListRoleUsers(context *gin.Context) {
-	token, err := extractAndValidateToken(context)
+func (h roleHandler) GetListRoleUsers(context *gin.Context) {
+	token, err := extractAndValidateToken(context, nil)
 	if err != nil {
 		return
 	}

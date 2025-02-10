@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres  # ✅ Ensure PostgreSQL starts before the app
+      - redis  # ✅ Ensure Redis starts before the app
+    environment:
+      - DB_HOST=postgres  # ✅ Use PostgreSQL inside Docker
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=admin
+      - DB_NAME=postgres
+      - DB_SCHEMA=authentication
+      - REDIS_URL=redis:6379  # ✅ Use Redis inside Docker
+      - REDIS_HOST=redis  # ✅ Redis is inside Docker
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    ports:
+      - "5432:5432"  # ✅ Expose PostgreSQL on port 5432
+    environment:
+      POSTGRES_USER: postgres  # ✅ Superuser name
+      POSTGRES_PASSWORD: admin  # ✅ Password (change for security)
+      POSTGRES_DB: postgres  # ✅ Default database
+      POSTGRES_HOST_AUTH_METHOD: md5  # ✅ Secure authentication
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # ✅ Persistent storage
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ""
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:

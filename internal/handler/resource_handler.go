@@ -5,32 +5,43 @@ import (
 	"authentication/internal/utils"
 	"authentication/package/response"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-type ResourceHandler struct {
-	ResourceService *services.ResourceService
+type ResourceHandler interface {
+	AddResource(ctx *gin.Context)
+	UpdateResource(ctx *gin.Context)
+	GetResources(ctx *gin.Context)
+	AssignResourceToRole(ctx *gin.Context)
+	GetResourcesById(ctx *gin.Context)
+	DeleteResourceById(ctx *gin.Context)
+	GetResourceUserById(ctx *gin.Context)
+	GetResourceRoles(ctx *gin.Context)
 }
 
-func NewResourceHandler(db *gorm.DB) *ResourceHandler {
-	return &ResourceHandler{ResourceService: services.NewResourceService(db)}
+type resourceHandler struct {
+	ResourceService services.ResourceService
+	JWTService      utils.JWTService
 }
 
-func extractClaims(context *gin.Context) (utils.TokenClaims, error) {
-	token, err := utils.ExtractClaims(context.GetHeader("Authorization"))
+func NewResourceHandler(resourceService services.ResourceService, jwtService utils.JWTService) ResourceHandler {
+	return resourceHandler{ResourceService: resourceService, JWTService: jwtService}
+}
+
+func extractClaims(context *gin.Context, jwtService utils.JWTService) (utils.TokenClaims, error) {
+	token, err := jwtService.ExtractClaims(context.GetHeader("Authorization"))
 	if err != nil {
 		response.SendResponse(context, 401, "Unauthorized", nil, err.Error())
 	}
 	return *token, err
 }
 
-func (h ResourceHandler) AddResource(ctx *gin.Context) {
+func (h resourceHandler) AddResource(ctx *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description" binding:"required"`
 	}
 
-	token, err := extractClaims(ctx)
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -44,7 +55,7 @@ func (h ResourceHandler) AddResource(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Resource added successfully", resource, err.Error())
 }
 
-func (h ResourceHandler) UpdateResource(ctx *gin.Context) {
+func (h resourceHandler) UpdateResource(ctx *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description" binding:"required"`
@@ -56,7 +67,7 @@ func (h ResourceHandler) UpdateResource(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractClaims(ctx)
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -74,8 +85,8 @@ func (h ResourceHandler) UpdateResource(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Resource updated successfully", resource, nil)
 }
 
-func (h ResourceHandler) GetResources(ctx *gin.Context) {
-	token, err := extractClaims(ctx)
+func (h resourceHandler) GetResources(ctx *gin.Context) {
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -88,13 +99,13 @@ func (h ResourceHandler) GetResources(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Resources retrieved successfully", resources, nil)
 }
 
-func (h ResourceHandler) AssignResourceToRole(ctx *gin.Context) {
+func (h resourceHandler) AssignResourceToRole(ctx *gin.Context) {
 	var req struct {
 		RoleID     uint `json:"role_id" binding:"required"`
 		ResourceID uint `json:"resource_id" binding:"required"`
 	}
 
-	token, err := extractClaims(ctx)
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -108,14 +119,14 @@ func (h ResourceHandler) AssignResourceToRole(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Resource assigned to role successfully", roleResource, err.Error())
 }
 
-func (h ResourceHandler) GetResourcesById(ctx *gin.Context) {
+func (h resourceHandler) GetResourcesById(ctx *gin.Context) {
 	resourceID, err := utils.ConvertToUint(ctx.Param("id"))
 	if err != nil {
 		response.SendResponse(ctx, 400, "Resource ID must be a number", nil, err.Error())
 		return
 	}
 
-	token, err := extractClaims(ctx)
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -124,14 +135,14 @@ func (h ResourceHandler) GetResourcesById(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Resource retrieved successfully", resource, err.Error())
 }
 
-func (h ResourceHandler) DeleteResourceById(ctx *gin.Context) {
+func (h resourceHandler) DeleteResourceById(ctx *gin.Context) {
 	resourceID, err := utils.ConvertToUint(ctx.Param("id"))
 	if err != nil {
 		response.SendResponse(ctx, 400, "Resource ID must be a number", nil, err.Error())
 		return
 	}
 
-	token, err := extractClaims(ctx)
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -140,14 +151,14 @@ func (h ResourceHandler) DeleteResourceById(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Resource deleted successfully", nil, err.Error())
 }
 
-func (h ResourceHandler) GetResourceUserById(ctx *gin.Context) {
+func (h resourceHandler) GetResourceUserById(ctx *gin.Context) {
 	resourceID, err := utils.ConvertToUint(ctx.Param("id"))
 	if err != nil {
 		response.SendResponse(ctx, 400, "Resource ID must be a number", nil, err.Error())
 		return
 	}
 
-	token, err := extractClaims(ctx)
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -161,8 +172,8 @@ func (h ResourceHandler) GetResourceUserById(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Users retrieved successfully", users, nil)
 }
 
-func (h ResourceHandler) GetResourceRoles(context *gin.Context) {
-	token, err := extractClaims(context)
+func (h resourceHandler) GetResourceRoles(context *gin.Context) {
+	token, err := extractClaims(context, h.JWTService)
 	if err != nil {
 		return
 	}

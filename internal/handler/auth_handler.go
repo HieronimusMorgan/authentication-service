@@ -6,19 +6,31 @@ import (
 	"authentication/internal/services"
 	"authentication/internal/utils"
 	"authentication/package/response"
-	"gorm.io/gorm"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type AuthHandler struct {
-	AuthService *services.AuthService
-	UserSession *services.UsersSessionService
+type AuthHandler interface {
+	Register(c *gin.Context)
+	Login(c *gin.Context)
+	GetProfile(c *gin.Context)
+	RegisterInternalToken(c *gin.Context)
+	DeleteUser(ctx *gin.Context)
+	UpdateRole(ctx *gin.Context)
+	GetListUser(ctx *gin.Context)
+	ChangePassword(ctx *gin.Context)
+	Logout(ctx *gin.Context)
 }
 
-func NewAuthHandler(db *gorm.DB) *AuthHandler {
-	return &AuthHandler{AuthService: services.NewAuthService(db), UserSession: services.NewUsersSessionService(db)}
+type authHandler struct {
+	AuthService services.AuthService
+	UserSession services.UsersSessionService
+	JWTService  utils.JWTService
+}
+
+func NewAuthHandler(serviceAuth services.AuthService, serviceSession services.UsersSessionService, jwtService utils.JWTService) AuthHandler {
+	return authHandler{AuthService: serviceAuth, UserSession: serviceSession, JWTService: jwtService}
 }
 
 // Helper for centralized error response
@@ -33,7 +45,7 @@ func handleSuccessResponse(c *gin.Context, status int, message string, data inte
 }
 
 // Register a new user
-func (h AuthHandler) Register(c *gin.Context) {
+func (h authHandler) Register(c *gin.Context) {
 	var errs = response.ErrorResponse{}
 	var req in.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -58,7 +70,7 @@ func (h AuthHandler) Register(c *gin.Context) {
 	handleSuccessResponse(c, http.StatusCreated, "User registered successfully", user)
 }
 
-func (h AuthHandler) Login(c *gin.Context) {
+func (h authHandler) Login(c *gin.Context) {
 	var errs = response.ErrorResponse{}
 	var req in.LoginRequest
 	var deviceID = c.GetHeader("Device-ID")
@@ -90,7 +102,7 @@ func (h AuthHandler) Login(c *gin.Context) {
 	handleSuccessResponse(c, http.StatusOK, "Login successful", user)
 }
 
-func (h AuthHandler) GetProfile(c *gin.Context) {
+func (h authHandler) GetProfile(c *gin.Context) {
 	var errs = response.ErrorResponse{}
 	token := c.GetHeader("Authorization")
 	if token == "" {
@@ -107,7 +119,7 @@ func (h AuthHandler) GetProfile(c *gin.Context) {
 	handleSuccessResponse(c, http.StatusOK, "Profile retrieved successfully", user)
 }
 
-func (h AuthHandler) RegisterInternalToken(c *gin.Context) {
+func (h authHandler) RegisterInternalToken(c *gin.Context) {
 	var errs = response.ErrorResponse{}
 	var req struct {
 		ResourceName string `json:"resource_name" binding:"required"`
@@ -127,7 +139,7 @@ func (h AuthHandler) RegisterInternalToken(c *gin.Context) {
 	handleSuccessResponse(c, http.StatusCreated, "Internal token registered successfully", token)
 }
 
-func (h AuthHandler) DeleteUser(ctx *gin.Context) {
+func (h authHandler) DeleteUser(ctx *gin.Context) {
 	var errs = response.ErrorResponse{}
 	userID, err := utils.ConvertToUint(ctx.Param("id"))
 	if err != nil {
@@ -135,7 +147,7 @@ func (h AuthHandler) DeleteUser(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractClaims(ctx)
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -149,7 +161,7 @@ func (h AuthHandler) DeleteUser(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "User deleted successfully", nil, nil)
 }
 
-func (h AuthHandler) UpdateRole(ctx *gin.Context) {
+func (h authHandler) UpdateRole(ctx *gin.Context) {
 	var errs = response.ErrorResponse{}
 	var req struct {
 		RoleID uint `json:"role_id" binding:"required"`
@@ -166,7 +178,7 @@ func (h AuthHandler) UpdateRole(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractClaims(ctx)
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -180,9 +192,9 @@ func (h AuthHandler) UpdateRole(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Role updated successfully", nil, nil)
 }
 
-func (h AuthHandler) GetListUser(ctx *gin.Context) {
+func (h authHandler) GetListUser(ctx *gin.Context) {
 	var errs = response.ErrorResponse{}
-	token, err := extractClaims(ctx)
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -196,7 +208,7 @@ func (h AuthHandler) GetListUser(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "List user retrieved successfully", users, nil)
 }
 
-func (h AuthHandler) ChangePassword(ctx *gin.Context) {
+func (h authHandler) ChangePassword(ctx *gin.Context) {
 	var errs = response.ErrorResponse{}
 	var req struct {
 		OldPassword string `json:"old_password" binding:"required"`
@@ -208,7 +220,7 @@ func (h AuthHandler) ChangePassword(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractClaims(ctx)
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}
@@ -222,8 +234,8 @@ func (h AuthHandler) ChangePassword(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Password changed successfully", nil, nil)
 }
 
-func (h AuthHandler) Logout(ctx *gin.Context) {
-	token, err := extractClaims(ctx)
+func (h authHandler) Logout(ctx *gin.Context) {
+	token, err := extractClaims(ctx, h.JWTService)
 	if err != nil {
 		return
 	}

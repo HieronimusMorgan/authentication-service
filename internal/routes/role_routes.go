@@ -2,17 +2,13 @@ package routes
 
 import (
 	"authentication/internal/handler"
-	"authentication/internal/middleware"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-func RoleRoutes(r *gin.Engine, db *gorm.DB) {
-	// Initialize Handlers
-	roleHandler := handler.NewRoleHandler(db)
+func RoleRoutes(r *gin.Engine, roleHandler handler.RoleHandler) {
 
 	protected := r.Group("/auth/v1/role")
-	protected.Use(middleware.AuthMiddleware(db))
+	//protected.Use(middleware.AuthMiddleware(roleService))
 	{
 		protected.POST("/add", roleHandler.AddRole)
 		protected.PUT("/update/:id", roleHandler.UpdateRole)

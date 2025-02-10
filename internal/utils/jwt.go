@@ -6,20 +6,40 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
-	"os"
 	"strings"
 	"time"
 )
 
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
-var internalSecretKey = []byte(os.Getenv("JWT_SECRET"))
+type JWTService interface {
+	GenerateToken(user models.Users) (models.TokenDetails, error)
+	ValidateToken(tokenString string) (*jwt.MapClaims, error)
+	ValidateTokenAdmin(tokenString string) (*jwt.MapClaims, error)
+	ExtractClaims(tokenString string) (*TokenClaims, error)
+	GenerateInternalToken(serviceName string) (string, error)
+	ValidateInternalToken(tokenString string) (*InternalClaims, error)
+}
 
-func GenerateToken(user models.Users) (models.TokenDetails, error) {
-	td := &models.TokenDetails{}
-	td.AtExpires = time.Now().Add(time.Hour * 24).Unix()
-	td.AccessUUID = uuid.New().String()
-	td.RtExpires = time.Now().Add(time.Hour * 24 * 7).Unix()
-	td.RefreshUUID = GenerateClientID()
+type jwtService struct {
+	SecretKey         []byte
+	InternalSecretKey []byte
+}
+
+// NewJWTService initializes the JWT service
+func NewJWTService(jwtSecret string) JWTService {
+	return jwtService{
+		SecretKey:         []byte(jwtSecret),
+		InternalSecretKey: []byte(jwtSecret),
+	}
+}
+
+// GenerateToken generates a new JWT token
+func (j jwtService) GenerateToken(user models.Users) (models.TokenDetails, error) {
+	td := &models.TokenDetails{
+		AtExpires:   time.Now().Add(time.Hour * 24).Unix(),
+		AccessUUID:  uuid.New().String(),
+		RtExpires:   time.Now().Add(time.Hour * 24 * 7).Unix(),
+		RefreshUUID: GenerateClientID(),
+	}
 
 	claims := jwt.MapClaims{
 		"authorized":  true,
@@ -30,9 +50,10 @@ func GenerateToken(user models.Users) (models.TokenDetails, error) {
 		"role":        user.Role.Name,
 		"exp":         td.AtExpires,
 	}
+
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	var err error
-	td.AccessToken, err = at.SignedString(jwtSecret)
+	td.AccessToken, err = at.SignedString(j.SecretKey)
 	if err != nil {
 		return models.TokenDetails{}, err
 	}
@@ -42,27 +63,24 @@ func GenerateToken(user models.Users) (models.TokenDetails, error) {
 	return *td, nil
 }
 
-func ValidateToken(tokenString string) (*jwt.MapClaims, error) {
-	// Parse the token
+// ValidateToken validates a JWT token and extracts claims
+func (j jwtService) ValidateToken(tokenString string) (*jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// Ensure the signing method is HMAC
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return jwtSecret, nil
+		return j.SecretKey, nil
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	// Extract claims and validate
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
 		return nil, errors.New("invalid token claims")
 	}
 
-	// Check expiration
 	if exp, ok := claims["exp"].(float64); ok {
 		if time.Unix(int64(exp), 0).Before(time.Now()) {
 			return nil, errors.New("token has expired")
@@ -72,32 +90,16 @@ func ValidateToken(tokenString string) (*jwt.MapClaims, error) {
 	return &claims, nil
 }
 
-func ValidateTokenAdmin(tokenString string) (*jwt.MapClaims, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return jwtSecret, nil
-	})
-
+// ValidateTokenAdmin checks if a user is an admin based on JWT claims
+func (j jwtService) ValidateTokenAdmin(tokenString string) (*jwt.MapClaims, error) {
+	claims, err := j.ValidateToken(tokenString)
 	if err != nil {
 		return nil, err
 	}
 
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		return nil, errors.New("invalid token claims")
-	}
-
-	if exp, ok := claims["exp"].(float64); ok {
-		if time.Unix(int64(exp), 0).Before(time.Now()) {
-			return nil, errors.New("token has expired")
-		}
-	}
-
-	if role, ok := claims["role"].(string); ok {
+	if role, ok := (*claims)["role"].(string); ok {
 		if strings.EqualFold(role, "Admin") || strings.EqualFold(role, "Super Admin") {
-			return &claims, nil
+			return claims, nil
 		}
 		return nil, errors.New("user is not an Admin")
 	}
@@ -105,77 +107,66 @@ func ValidateTokenAdmin(tokenString string) (*jwt.MapClaims, error) {
 	return nil, errors.New("role not found in token claims")
 }
 
-func ExtractClaims(tokenString string) (*TokenClaims, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return jwtSecret, nil
-	})
-
+// ExtractClaims extracts claims from a JWT token
+func (j jwtService) ExtractClaims(tokenString string) (*TokenClaims, error) {
+	claims, err := j.ValidateToken(tokenString)
 	if err != nil {
-		return nil, errors.New("invalid token")
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		return nil, errors.New("invalid token claims")
+		return nil, err
 	}
 
 	tc := &TokenClaims{}
 
-	if authorized, ok := claims["authorized"].(bool); ok {
+	if authorized, ok := (*claims)["authorized"].(bool); ok {
 		tc.Authorized = authorized
 	}
 
-	if accessUUID, ok := claims["access_uuid"].(string); ok {
+	if accessUUID, ok := (*claims)["access_uuid"].(string); ok {
 		tc.AccessUUID = accessUUID
 	}
 
-	if exp, ok := claims["exp"].(float64); ok {
+	if exp, ok := (*claims)["exp"].(float64); ok {
 		tc.Exp = int64(exp)
 	}
 
-	if userID, ok := claims["user_id"].(float64); ok { // JWT numbers are float64
+	if userID, ok := (*claims)["user_id"].(float64); ok {
 		tc.UserID = uint(userID)
 	}
 
-	if clientID, ok := claims["client_id"].(string); ok { // JWT numbers are float64
+	if clientID, ok := (*claims)["client_id"].(string); ok {
 		tc.ClientID = clientID
 	}
 
-	if role, ok := claims["role_id"].(float64); ok {
+	if role, ok := (*claims)["role_id"].(float64); ok {
 		tc.RoleID = uint(role)
 	}
 
 	return tc, nil
 }
 
-func GenerateInternalToken(serviceName string) (string, error) {
+// GenerateInternalToken creates an internal JWT for service-to-service communication
+func (j jwtService) GenerateInternalToken(serviceName string) (string, error) {
 	claims := InternalClaims{
 		Service: serviceName,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    "auth-service",                                      // Issuing service
-			Subject:   "internal-communication",                            // Purpose
-			Audience:  []string{strings.ToLower(serviceName) + "-service"}, // Target service(s)
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),       // Token expiration (1 hour)
-			IssuedAt:  jwt.NewNumericDate(time.Now()),                      // Issued time
+			Issuer:    "auth-service",
+			Subject:   "internal-communication",
+			Audience:  []string{strings.ToLower(serviceName) + "-service"},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 
-	// Create the token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Sign the token
-	return token.SignedString(internalSecretKey)
+	return token.SignedString(j.InternalSecretKey)
 }
 
-func ValidateInternalToken(tokenString string) (*InternalClaims, error) {
+// ValidateInternalToken verifies an internal JWT token
+func (j jwtService) ValidateInternalToken(tokenString string) (*InternalClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &InternalClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
 		}
-		return internalSecretKey, nil
+		return j.InternalSecretKey, nil
 	})
 
 	if err != nil {
@@ -189,6 +180,7 @@ func ValidateInternalToken(tokenString string) (*InternalClaims, error) {
 	return nil, jwt.ErrSignatureInvalid
 }
 
+// TokenClaims represents the claims extracted from a JWT token
 type TokenClaims struct {
 	Authorized bool   `json:"authorized"`
 	AccessUUID string `json:"access_uuid"`
@@ -198,7 +190,8 @@ type TokenClaims struct {
 	Exp        int64  `json:"exp"`
 }
 
+// InternalClaims represents the claims used for service-to-service authentication
 type InternalClaims struct {
-	Service string `json:"service"` // Service name
+	Service string `json:"service"`
 	jwt.RegisteredClaims
 }

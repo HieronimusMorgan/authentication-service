@@ -5,33 +5,39 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserSessionRepository struct {
-	DB *gorm.DB
+type UserSessionRepository interface {
+	GetUserSessionByUserID(userID uint) (*models.UserSession, error)
+	AddUserSession(userSession *models.UserSession) error
+	UpdateSession(session *models.UserSession) error
 }
 
-func NewUserSessionRepository(db *gorm.DB) *UserSessionRepository {
-	return &UserSessionRepository{DB: db}
+type userSessionRepository struct {
+	db *gorm.DB
 }
 
-func (r UserSessionRepository) GetUserSessionByUserID(userID uint) (*models.UserSession, error) {
+func NewUserSessionRepository(db *gorm.DB) UserSessionRepository {
+	return &userSessionRepository{db: db}
+}
+
+func (r userSessionRepository) GetUserSessionByUserID(userID uint) (*models.UserSession, error) {
 	var userSession *models.UserSession
-	err := r.DB.Where("user_id = ?", userID).First(&userSession).Error
+	err := r.db.Where("user_id = ?", userID).First(&userSession).Error
 	if err != nil {
 		return nil, err
 	}
 	return userSession, nil
 }
 
-func (r UserSessionRepository) AddUserSession(userSession *models.UserSession) error {
-	err := r.DB.Create(userSession).Error
+func (r userSessionRepository) AddUserSession(userSession *models.UserSession) error {
+	err := r.db.Create(userSession).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r UserSessionRepository) UpdateSession(session *models.UserSession) error {
-	err := r.DB.Save(session).Error
+func (r userSessionRepository) UpdateSession(session *models.UserSession) error {
+	err := r.db.Save(session).Error
 	if err != nil {
 		return err
 	}

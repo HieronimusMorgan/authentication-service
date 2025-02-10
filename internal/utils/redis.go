@@ -1,53 +1,51 @@
 package utils
 
 import (
-	"authentication/config"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/redis/go-redis/v9"
-	"log"
-	"time"
 )
 
-var RedisClient *redis.Client
-var Ctx = context.Background()
+// RedisService defines the contract for Redis operations
+type RedisService interface {
+	SaveData(key string, clientID string, data interface{}) error
+	GetData(key string, clientID string, target interface{}) error
+	DeleteData(key string, clientID string) error
+	GetToken(clientID string) (string, error)
+	DeleteToken(clientID string) error
+}
 
-func InitializeRedis() {
-	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     config.LoadRedisConfig(),
-		Password: "",
-		DB:       0,
-	})
-	_, err := RedisClient.Ping(Ctx).Result()
-	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+// RedisServiceImpl is the struct that implements RedisService
+type redisService struct {
+	Client redis.Client
+	Ctx    context.Context
+}
+
+// NewRedisService initializes Redis client
+func NewRedisService(client redis.Client) RedisService {
+	return redisService{
+		Client: client,
+		Ctx:    context.Background(),
 	}
-
-	log.Println("Connected to Redis successfully")
 }
 
-func SaveTokenToRedis(clientID string, token string, expiration time.Duration) error {
-	redisKey := generateRedisKey(clientID) // Generate a unique key for the user
-	fmt.Println(redisKey)
-	err := RedisClient.Set(Ctx, redisKey, token, expiration).Err()
-	return err
-}
-
-func SaveDataToRedis(key string, clientID string, data interface{}) error {
+// SaveData stores data in Redis
+func (r redisService) SaveData(key string, clientID string, data interface{}) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal data to JSON: %v", err)
 	}
 	redisKey := key + ":" + clientID
-	err = RedisClient.Set(Ctx, redisKey, jsonData, 0).Err()
+	err = r.Client.Set(r.Ctx, redisKey, jsonData, 0).Err()
 	return err
 }
 
-func GetDataFromRedis(key string, clientID string, target *interface{}) error {
+// GetData retrieves data from Redis and unmarshals it into target
+func (r redisService) GetData(key string, clientID string, target interface{}) error {
 	redisKey := key + ":" + clientID
-	jsonData, err := RedisClient.Get(Ctx, redisKey).Result()
+	jsonData, err := r.Client.Get(r.Ctx, redisKey).Result()
 	if errors.Is(err, redis.Nil) {
 		return fmt.Errorf("no data found for key: %s", redisKey)
 	} else if err != nil {
@@ -61,19 +59,22 @@ func GetDataFromRedis(key string, clientID string, target *interface{}) error {
 	return nil
 }
 
-func DeleteDataFromRedis(key string, clientID string) error {
+// DeleteData removes a key from Redis
+func (r redisService) DeleteData(key string, clientID string) error {
 	redisKey := key + ":" + clientID
-	err := RedisClient.Del(Ctx, redisKey).Err()
+	err := r.Client.Del(r.Ctx, redisKey).Err()
 	return err
 }
 
+// GenerateRedisKey creates a formatted key for token storage
 func generateRedisKey(clientID string) string {
-	return "token:" + string(clientID)
+	return "token:" + clientID
 }
 
-func GetTokenFromRedis(clientID string) (string, error) {
+// GetToken retrieves a stored token from Redis
+func (r redisService) GetToken(clientID string) (string, error) {
 	redisKey := generateRedisKey(clientID)
-	token, err := RedisClient.Get(Ctx, redisKey).Result()
+	token, err := r.Client.Get(r.Ctx, redisKey).Result()
 	if errors.Is(err, redis.Nil) {
 		return "", nil // Token not found
 	} else if err != nil {
@@ -82,8 +83,9 @@ func GetTokenFromRedis(clientID string) (string, error) {
 	return token, nil
 }
 
-func DeleteTokenFromRedis(clientID string) error {
+// DeleteToken removes a stored token from Redis
+func (r redisService) DeleteToken(clientID string) error {
 	redisKey := generateRedisKey(clientID)
-	err := RedisClient.Del(Ctx, redisKey).Err()
+	err := r.Client.Del(r.Ctx, redisKey).Err()
 	return err
 }
