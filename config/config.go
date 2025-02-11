@@ -35,7 +35,7 @@ type Config struct {
 // LoadConfig loads environment variables into the Config struct
 func LoadConfig() *Config {
 	var cfg Config
-	err := envconfig.Process("", &cfg)
+	err := envconfig.Process("AUTH", &cfg)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
