@@ -24,10 +24,10 @@ type UserRepository interface {
 }
 
 type userRepository struct {
-	db *gorm.DB
+	db gorm.DB
 }
 
-func NewUserRepository(db *gorm.DB) UserRepository {
+func NewUserRepository(db gorm.DB) UserRepository {
 	return &userRepository{db: db}
 }
 

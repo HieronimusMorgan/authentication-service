@@ -12,10 +12,10 @@ type UserSessionRepository interface {
 }
 
 type userSessionRepository struct {
-	db *gorm.DB
+	db gorm.DB
 }
 
-func NewUserSessionRepository(db *gorm.DB) UserSessionRepository {
+func NewUserSessionRepository(db gorm.DB) UserSessionRepository {
 	return &userSessionRepository{db: db}
 }
 

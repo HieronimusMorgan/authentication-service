@@ -16,10 +16,10 @@ type UserRoleRepository interface {
 }
 
 type userRoleRepository struct {
-	db *gorm.DB
+	db gorm.DB
 }
 
-func NewUserRoleRepository(db *gorm.DB) UserRoleRepository {
+func NewUserRoleRepository(db gorm.DB) UserRoleRepository {
 	return &userRoleRepository{db: db}
 }
 

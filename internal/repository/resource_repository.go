@@ -19,10 +19,10 @@ type ResourceRepository interface {
 }
 
 type resourceRepository struct {
-	db *gorm.DB
+	db gorm.DB
 }
 
-func NewResourceRepository(db *gorm.DB) ResourceRepository {
+func NewResourceRepository(db gorm.DB) ResourceRepository {
 	return &resourceRepository{db: db}
 }
 

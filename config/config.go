@@ -3,16 +3,16 @@ package config
 import (
 	"context"
 	"fmt"
-	"github.com/joho/godotenv"
+	"log"
+	"time"
+
 	"github.com/kelseyhightower/envconfig"
 	"github.com/redis/go-redis/v9"
+	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
-	"log"
-	"os"
-	"time"
 )
 
 // Config holds application-wide configurations
@@ -35,37 +35,72 @@ type Config struct {
 // LoadConfig loads environment variables into the Config struct
 func LoadConfig() *Config {
 	var cfg Config
-	err := envconfig.Process("AUTH", &cfg)
-	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+	if err := envconfig.Process("", &cfg); err != nil {
+		log.Fatalf("❌ Failed to load config: %v", err)
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"AppPort":   cfg.AppPort,
+		"DBHost":    cfg.DBHost,
+		"DBName":    cfg.DBName,
+		"RedisHost": cfg.RedisHost,
+	}).Info("✅ Configuration loaded successfully")
+
 	return &cfg
 }
 
-// InitDatabase initializes and returns a PostgreSQL database connection
+// InitDatabase initializes and returns a PostgreSQL database connection with retry logic
 func InitDatabase(cfg *Config) *gorm.DB {
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode,
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger:         logger.Default.LogMode(logger.Info),
-		NamingStrategy: schemaNamingStrategy(cfg.DBSchema)})
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+	var db *gorm.DB
+	var err error
+	maxRetries := 5
+
+	for i := 1; i <= maxRetries; i++ {
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+			Logger:         logger.Default.LogMode(logger.Info),
+			NamingStrategy: schemaNamingStrategy(cfg.DBSchema),
+		})
+		if err == nil {
+			break
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"attempt": i,
+			"error":   err.Error(),
+		}).Warn("⏳ Retrying database connection...")
+
+		time.Sleep(2 * time.Second)
 	}
-	log.Println("✅ Connected to PostgreSQL")
+
+	if err != nil {
+		logrus.WithError(err).Fatal("❌ Failed to connect to PostgreSQL after retries")
+	}
+
+	logrus.Info("✅ Connected to PostgreSQL")
 	return db
 }
 
-func schemaNamingStrategy(schemaName string) schema.NamingStrategy {
-	return schema.NamingStrategy{
-		TablePrefix: schemaName + ".", // Use the schema as a prefix
+// CloseDatabase closes the database connection properly
+func CloseDatabase(db *gorm.DB) {
+	sqlDB, err := db.DB()
+	if err != nil {
+		logrus.WithError(err).Error("Failed to retrieve database instance")
+		return
+	}
+
+	if err := sqlDB.Close(); err != nil {
+		logrus.WithError(err).Error("Error closing database connection")
+	} else {
+		logrus.Info("✅ Database connection closed")
 	}
 }
 
-// InitRedis initializes and returns a Redis client
+// InitRedis initializes and returns a Redis client with retry logic
 func InitRedis(cfg *Config) *redis.Client {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),
@@ -73,22 +108,42 @@ func InitRedis(cfg *Config) *redis.Client {
 		DB:       cfg.RedisDB,
 	})
 
-	// Ping Redis to check the connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	// Connection Retry Logic
+	maxRetries := 5
+	for i := 1; i <= maxRetries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-	_, err := rdb.Ping(ctx).Result()
-	if err != nil {
-		log.Fatalf("❌ Failed to connect to Redis: %v", err)
+		_, err := rdb.Ping(ctx).Result()
+		if err == nil {
+			logrus.Info("✅ Connected to Redis")
+			return rdb
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"attempt": i,
+			"error":   err.Error(),
+		}).Warn("⏳ Retrying Redis connection...")
+
+		time.Sleep(2 * time.Second)
 	}
-	log.Println("✅ Connected to Redis")
-	return rdb
+
+	logrus.Fatal("❌ Failed to connect to Redis after retries")
+	return nil
 }
 
-func LoadRedisConfig() string {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file")
+// CloseRedis closes the Redis connection properly
+func CloseRedis(rdb *redis.Client) {
+	if err := rdb.Close(); err != nil {
+		logrus.WithError(err).Error("Error closing Redis connection")
+	} else {
+		logrus.Info("✅ Redis connection closed")
 	}
-	return os.Getenv("REDIS_URL")
+}
+
+// schemaNamingStrategy sets the schema for GORM
+func schemaNamingStrategy(schemaName string) schema.NamingStrategy {
+	return schema.NamingStrategy{
+		TablePrefix: schemaName + ".", // Use schema as prefix
+	}
 }

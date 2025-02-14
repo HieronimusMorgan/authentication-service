@@ -19,11 +19,11 @@ type AuthRepository interface {
 }
 
 type authRepository struct {
-	db *gorm.DB
+	db gorm.DB
 }
 
 // NewAuthRepository creates a new repository instance
-func NewAuthRepository(db *gorm.DB) AuthRepository {
+func NewAuthRepository(db gorm.DB) AuthRepository {
 	return &authRepository{db: db}
 }
 
