@@ -8,7 +8,7 @@ import (
 func ResourceRoutes(r *gin.Engine, resourceHandler controller.ResourceController) {
 	// Initialize Handlers
 	// Public Routes
-	protected := r.Group("/auth/v1/resources")
+	protected := r.Group("/v1/resources")
 	//protected.Use(middleware.AuthMiddleware(resourceService))
 	{
 		protected.POST("/add", resourceHandler.AddResource)

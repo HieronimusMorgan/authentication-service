@@ -7,7 +7,7 @@ import (
 
 func RoleRoutes(r *gin.Engine, roleHandler controller.RoleController) {
 
-	protected := r.Group("/auth/v1/role")
+	protected := r.Group("/v1/role")
 	//protected.Use(middleware.AuthMiddleware(roleService))
 	{
 		protected.POST("/add", roleHandler.AddRole)

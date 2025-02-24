@@ -70,14 +70,14 @@
 
 ### Public Routes
 
-- `POST /auth/v1/register/internal-token`: Generate internal tokens for inter-service communication.
+- `POST /v1/register/internal-token`: Generate internal tokens for inter-service communication.
 
 ### Protected Routes (Require Authentication)
 
-- `POST /auth/v1/register`: User registration.
-- `POST /auth/v1/login`: User login.
-- `POST /auth/v1/refresh`: Refresh token (to renew session).
-- `GET /auth/v1/profile`: Fetch user profile (requires a valid token).
+- `POST /v1/register`: User registration.
+- `POST /v1/login`: User login.
+- `POST /v1/refresh`: Refresh token (to renew session).
+- `GET /v1/profile`: Fetch user profile (requires a valid token).
 
 ### Utility
 

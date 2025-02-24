@@ -9,13 +9,13 @@ import (
 func AuthRoutes(r *gin.Engine, middleware config.Middleware, authHandler controller.AuthHController) {
 
 	// Public routes: No middleware applied
-	public := r.Group("/auth/v1")
+	public := r.Group("/v1")
 	{
 		public.POST("/register", authHandler.Register)
 		public.POST("/login", authHandler.Login)
 	}
 
-	protected := r.Group("/auth/v1")
+	protected := r.Group("/v1")
 	protected.Use(middleware.AuthMiddleware.Handler())
 	{
 		protected.GET("/profile", authHandler.GetProfile)
@@ -23,7 +23,7 @@ func AuthRoutes(r *gin.Engine, middleware config.Middleware, authHandler control
 		public.GET("/logout", authHandler.Logout)
 	}
 
-	admin := r.Group("/auth/v1")
+	admin := r.Group("/v1")
 	admin.Use(middleware.AdminMiddleware.Handler())
 	{
 		admin.GET("/users", authHandler.GetListUser)
