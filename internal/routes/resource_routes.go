@@ -1,11 +1,11 @@
 package routes
 
 import (
-	"authentication/internal/handler"
+	"authentication/internal/controller"
 	"github.com/gin-gonic/gin"
 )
 
-func ResourceRoutes(r *gin.Engine, resourceHandler handler.ResourceHandler) {
+func ResourceRoutes(r *gin.Engine, resourceHandler controller.ResourceController) {
 	// Initialize Handlers
 	// Public Routes
 	protected := r.Group("/auth/v1/resources")

@@ -1,13 +1,14 @@
-package handler
+package controller
 
 import (
 	"authentication/internal/services"
 	"authentication/internal/utils"
 	"authentication/package/response"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
-type RoleHandler interface {
+type RoleController interface {
 	AddRole(ctx *gin.Context)
 	UpdateRole(ctx *gin.Context)
 	GetListRole(ctx *gin.Context)
@@ -16,13 +17,13 @@ type RoleHandler interface {
 	GetListRoleUsers(ctx *gin.Context)
 }
 
-type roleHandler struct {
+type roleController struct {
 	RoleService services.RoleService
 	JWTService  utils.JWTService
 }
 
-func NewRoleHandler(db services.RoleService, jwtService utils.JWTService) RoleHandler {
-	return roleHandler{RoleService: db, JWTService: jwtService}
+func NewRoleController(db services.RoleService, jwtService utils.JWTService) RoleController {
+	return roleController{RoleService: db, JWTService: jwtService}
 }
 
 func extractAndValidateToken(context *gin.Context, service utils.JWTService) (utils.TokenClaims, error) {
@@ -33,7 +34,7 @@ func extractAndValidateToken(context *gin.Context, service utils.JWTService) (ut
 	return *token, err
 }
 
-func (h roleHandler) AddRole(ctx *gin.Context) {
+func (h roleController) AddRole(ctx *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description" binding:"required"`
@@ -44,8 +45,9 @@ func (h roleHandler) AddRole(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractAndValidateToken(ctx, h.JWTService)
-	if err != nil {
+	token, exist := utils.ExtractTokenClaims(ctx)
+	if !exist {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, "Token not found")
 		return
 	}
 
@@ -57,7 +59,7 @@ func (h roleHandler) AddRole(ctx *gin.Context) {
 	response.SendResponse(ctx, 201, "Role registered successfully", role, nil)
 }
 
-func (h roleHandler) UpdateRole(ctx *gin.Context) {
+func (h roleController) UpdateRole(ctx *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description" binding:"optional"`
@@ -85,8 +87,9 @@ func (h roleHandler) UpdateRole(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractAndValidateToken(ctx, h.JWTService)
-	if err != nil {
+	token, exist := utils.ExtractTokenClaims(ctx)
+	if !exist {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, "Token not found")
 		return
 	}
 
@@ -98,9 +101,10 @@ func (h roleHandler) UpdateRole(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Role updated successfully", role, nil)
 }
 
-func (h roleHandler) GetListRole(ctx *gin.Context) {
-	token, err := extractAndValidateToken(ctx, h.JWTService)
-	if err != nil {
+func (h roleController) GetListRole(ctx *gin.Context) {
+	token, exist := utils.ExtractTokenClaims(ctx)
+	if !exist {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, "Token not found")
 		return
 	}
 
@@ -113,7 +117,7 @@ func (h roleHandler) GetListRole(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Roles retrieved successfully", roles, nil)
 }
 
-func (h roleHandler) GetRoleById(ctx *gin.Context) {
+func (h roleController) GetRoleById(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		response.SendResponse(ctx, 400, "Role ID is required", nil, nil)
@@ -126,8 +130,9 @@ func (h roleHandler) GetRoleById(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractAndValidateToken(ctx, h.JWTService)
-	if err != nil {
+	token, exist := utils.ExtractTokenClaims(ctx)
+	if !exist {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, "Token not found")
 		return
 	}
 
@@ -140,7 +145,7 @@ func (h roleHandler) GetRoleById(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Role retrieved successfully", role, nil)
 }
 
-func (h roleHandler) DeleteRoleById(ctx *gin.Context) {
+func (h roleController) DeleteRoleById(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		response.SendResponse(ctx, 400, "Role ID is required", nil, nil)
@@ -153,8 +158,9 @@ func (h roleHandler) DeleteRoleById(ctx *gin.Context) {
 		return
 	}
 
-	token, err := extractAndValidateToken(ctx, h.JWTService)
-	if err != nil {
+	token, exist := utils.ExtractTokenClaims(ctx)
+	if !exist {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, "Token not found")
 		return
 	}
 
@@ -167,17 +173,18 @@ func (h roleHandler) DeleteRoleById(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Role deleted successfully", nil, nil)
 }
 
-func (h roleHandler) GetListRoleUsers(context *gin.Context) {
-	token, err := extractAndValidateToken(context, nil)
-	if err != nil {
+func (h roleController) GetListRoleUsers(ctx *gin.Context) {
+	token, exist := utils.ExtractTokenClaims(ctx)
+	if !exist {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, "Token not found")
 		return
 	}
 
 	users, err := h.RoleService.GetListRoleUsers(token.ClientID)
 	if err != nil {
-		response.SendResponse(context, 500, "Failed to get list of role users", nil, err.Error())
+		response.SendResponse(ctx, 500, "Failed to get list of role users", nil, err.Error())
 		return
 	}
 
-	response.SendResponse(context, 200, "Role users retrieved successfully", users, nil)
+	response.SendResponse(ctx, 200, "Role users retrieved successfully", users, nil)
 }

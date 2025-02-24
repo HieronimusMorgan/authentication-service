@@ -1,21 +1,23 @@
 package config
 
 import (
-	"authentication/internal/handler"
+	"authentication/internal/controller"
 	"authentication/internal/middleware"
 	"authentication/internal/repository"
 	"authentication/internal/services"
 	"authentication/internal/utils"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 // ServerConfig holds all initialized components
 type ServerConfig struct {
+	Gin        *gin.Engine
 	Config     *Config
 	DB         *gorm.DB
 	Redis      utils.RedisService
 	JWTService utils.JWTService
-	Handler    Handler
+	Controller Controller
 	Services   Services
 	Repository Repository
 	Middleware Middleware
@@ -40,10 +42,10 @@ type Repository struct {
 	UserSessionRepo  repository.UserSessionRepository
 }
 
-type Handler struct {
-	AuthHandler     handler.AuthHandler
-	ResourceHandler handler.ResourceHandler
-	RoleHandler     handler.RoleHandler
+type Controller struct {
+	AuthController     controller.AuthHController
+	ResourceController controller.ResourceController
+	RoleController     controller.RoleController
 }
 
 type Middleware struct {

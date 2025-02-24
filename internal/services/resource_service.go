@@ -8,7 +8,18 @@ import (
 	"strings"
 )
 
-type ResourceService struct {
+type ResourceService interface {
+	AddResource(name *string, description *string, clientID string) (interface{}, error)
+	UpdateResource(resourceID uint, name *string, description *string, clientID string) (interface{}, error)
+	GetResources(clientID string) (interface{}, error)
+	AssignResourceToRole(roleID uint, resourceID uint, clientID string) (interface{}, error)
+	GetResourceById(resourceID uint, clientID string) (interface{}, error)
+	DeleteResourceById(resourceID uint, clientID string) error
+	GetResourceUserById(resourceID uint, clientID string) (interface{}, error)
+	GetResourceRoles(clientID string) (interface{}, error)
+}
+
+type resourceService struct {
 	ResourceRepository     repository.ResourceRepository
 	RoleResourceRepository repository.RoleResourceRepository
 	RoleRepository         repository.RoleRepository
@@ -21,7 +32,7 @@ func NewResourceService(
 	roleRepo repository.RoleRepository,
 	userRepo repository.UserRepository,
 ) ResourceService {
-	return ResourceService{
+	return resourceService{
 		ResourceRepository:     resourceRepo,
 		RoleResourceRepository: roleResourceRepo,
 		RoleRepository:         roleRepo,
@@ -29,7 +40,7 @@ func NewResourceService(
 	}
 }
 
-func (s ResourceService) checkUserIsAdmin(user *models.Users) error {
+func (s resourceService) checkUserIsAdmin(user *models.Users) error {
 	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
 	if err != nil {
 		return errors.New("role not found")
@@ -40,7 +51,7 @@ func (s ResourceService) checkUserIsAdmin(user *models.Users) error {
 	return errors.New("user is not an admin")
 }
 
-func (s ResourceService) AddResource(name *string, description *string, clientID string) (interface{}, error) {
+func (s resourceService) AddResource(name *string, description *string, clientID string) (interface{}, error) {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
@@ -70,7 +81,7 @@ func (s ResourceService) AddResource(name *string, description *string, clientID
 	}, nil
 }
 
-func (s ResourceService) UpdateResource(resourceID uint, name *string, description *string, clientID string) (interface{}, error) {
+func (s resourceService) UpdateResource(resourceID uint, name *string, description *string, clientID string) (interface{}, error) {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
@@ -101,7 +112,7 @@ func (s ResourceService) UpdateResource(resourceID uint, name *string, descripti
 	}, nil
 }
 
-func (s ResourceService) GetResources(clientID string) (interface{}, error) {
+func (s resourceService) GetResources(clientID string) (interface{}, error) {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
@@ -129,7 +140,7 @@ func (s ResourceService) GetResources(clientID string) (interface{}, error) {
 	return resources, nil
 }
 
-func (s ResourceService) AssignResourceToRole(roleID uint, resourceID uint, clientID string) (interface{}, error) {
+func (s resourceService) AssignResourceToRole(roleID uint, resourceID uint, clientID string) (interface{}, error) {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
@@ -165,7 +176,7 @@ func (s ResourceService) AssignResourceToRole(roleID uint, resourceID uint, clie
 	}, nil
 }
 
-func (s ResourceService) GetResourceById(resourceID uint, clientID string) (interface{}, error) {
+func (s resourceService) GetResourceById(resourceID uint, clientID string) (interface{}, error) {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
@@ -188,7 +199,7 @@ func (s ResourceService) GetResourceById(resourceID uint, clientID string) (inte
 	}, nil
 }
 
-func (s ResourceService) DeleteResourceById(resourceID uint, clientID string) error {
+func (s resourceService) DeleteResourceById(resourceID uint, clientID string) error {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return err
@@ -206,7 +217,7 @@ func (s ResourceService) DeleteResourceById(resourceID uint, clientID string) er
 	return nil
 }
 
-func (s ResourceService) GetResourceUserById(resourceID uint, clientID string) (interface{}, error) {
+func (s resourceService) GetResourceUserById(resourceID uint, clientID string) (interface{}, error) {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
@@ -277,7 +288,7 @@ func (s ResourceService) GetResourceUserById(resourceID uint, clientID string) (
 	return data, nil
 }
 
-func (s ResourceService) GetResourceRoles(clientID string) (interface{}, error) {
+func (s resourceService) GetResourceRoles(clientID string) (interface{}, error) {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err

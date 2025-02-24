@@ -7,29 +7,33 @@ import (
 	"time"
 )
 
-// UsersSessionService manages user session operations
-type UsersSessionService struct {
+type UsersSessionService interface {
+	AddUserSession(userID uint, token, refreshToken, ipAddress, userAgent string) error
+	GetUserSessionByUserID(userID uint) (*models.UserSession, error)
+	LogoutSession(userID uint) error
+}
+
+type usersSessionService struct {
 	UserSessionRepository repository.UserSessionRepository
 	UserRepository        repository.UserRepository
 	JWTService            utils.JWTService
 	Redis                 utils.RedisService
 }
 
-// NewUsersSessionService initializes UsersSessionService with repository dependencies
 func NewUsersSessionService(
 	userSessionRepo repository.UserSessionRepository,
 	userRepo repository.UserRepository,
 	jwtService utils.JWTService,
 	redis utils.RedisService,
 ) UsersSessionService {
-	return UsersSessionService{
+	return usersSessionService{
 		UserSessionRepository: userSessionRepo,
 		UserRepository:        userRepo,
 		JWTService:            jwtService,
 		Redis:                 redis,
 	}
 }
-func (s UsersSessionService) AddUserSession(userID uint, token, refreshToken, ipAddress, userAgent string) error {
+func (s usersSessionService) AddUserSession(userID uint, token, refreshToken, ipAddress, userAgent string) error {
 	user, err := s.UserRepository.GetUserByID(userID)
 	if err != nil {
 		return err
@@ -75,11 +79,11 @@ func (s UsersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 	return nil
 }
 
-func (s UsersSessionService) GetUserSessionByUserID(userID uint) (*models.UserSession, error) {
+func (s usersSessionService) GetUserSessionByUserID(userID uint) (*models.UserSession, error) {
 	return s.UserSessionRepository.GetUserSessionByUserID(userID)
 }
 
-func (s UsersSessionService) LogoutSession(userID uint) error {
+func (s usersSessionService) LogoutSession(userID uint) error {
 	currentTime := time.Now()
 	user, err := s.UserRepository.GetUserByID(userID)
 	if err != nil {

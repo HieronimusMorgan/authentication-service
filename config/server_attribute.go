@@ -1,7 +1,7 @@
 package config
 
 import (
-	"authentication/internal/handler"
+	"authentication/internal/controller"
 	"authentication/internal/middleware"
 	"authentication/internal/repository"
 	"authentication/internal/services"
@@ -17,6 +17,7 @@ func NewServerConfig() (*ServerConfig, error) {
 	redisClient := InitRedis(cfg)
 	redisService := utils.NewRedisService(*redisClient)
 	db := InitDatabase(cfg)
+	engine := InitGin()
 
 	// Graceful Shutdown Handling
 	quit := make(chan os.Signal, 1)
@@ -34,6 +35,7 @@ func NewServerConfig() (*ServerConfig, error) {
 	}()
 
 	server := &ServerConfig{
+		Gin:        engine,
 		Config:     cfg,
 		DB:         db,
 		Redis:      redisService,
@@ -42,7 +44,7 @@ func NewServerConfig() (*ServerConfig, error) {
 
 	server.initRepository()
 	server.initServices()
-	server.initHandler()
+	server.initController()
 	server.initMiddleware()
 	return server, nil
 }
@@ -84,11 +86,11 @@ func (s *ServerConfig) Start() error {
 	return nil
 }
 
-func (s *ServerConfig) initHandler() {
-	s.Handler = Handler{
-		AuthHandler:     handler.NewAuthHandler(s.Services.AuthService, s.Services.UserSessionService, s.JWTService),
-		ResourceHandler: handler.NewResourceHandler(s.Services.ResourceService, s.JWTService),
-		RoleHandler:     handler.NewRoleHandler(s.Services.RoleService, s.JWTService),
+func (s *ServerConfig) initController() {
+	s.Controller = Controller{
+		AuthController:     controller.NewAuthController(s.Services.AuthService, s.Services.UserSessionService, s.JWTService),
+		ResourceController: controller.NewResourceController(s.Services.ResourceService, s.JWTService),
+		RoleController:     controller.NewRoleController(s.Services.RoleService, s.JWTService),
 	}
 }
 

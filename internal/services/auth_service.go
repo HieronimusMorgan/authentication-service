@@ -11,7 +11,23 @@ import (
 	"strings"
 )
 
-type AuthService struct {
+type AuthService interface {
+	Register(req *in.RegisterRequest) (out.RegisterResponse, response.ErrorResponse)
+	Login(req *in.LoginRequest) (interface{}, response.ErrorResponse)
+	GetProfile(clientID string) (*out.UserResponse, response.ErrorResponse)
+	RegisterInternalToken(req *struct {
+		ResourceName string `json:"resource_name" binding:"required"`
+	}) (interface{}, response.ErrorResponse)
+	DeleteUserById(userID uint, clientID string) response.ErrorResponse
+	UpdateRole(userID uint, roleID uint, clientID string) response.ErrorResponse
+	GetListUser(clientID string) (interface{}, response.ErrorResponse)
+	ChangePassword(password *struct {
+		OldPassword string `json:"old_password" binding:"required"`
+		NewPassword string `json:"new_password" binding:"required"`
+	}, clientID string) response.ErrorResponse
+}
+
+type authService struct {
 	AuthRepository         repository.AuthRepository
 	ResourceRepository     repository.ResourceRepository
 	RoleRepository         repository.RoleRepository
@@ -23,8 +39,17 @@ type AuthService struct {
 	JWTService             utils.JWTService
 }
 
-func NewAuthService(authRepo repository.AuthRepository, resourceRepo repository.ResourceRepository, roleRepo repository.RoleRepository, roleResourceRepo repository.RoleResourceRepository, userRepo repository.UserRepository, userRoleRepo repository.UserRoleRepository, userSessionRepo repository.UserSessionRepository, redis utils.RedisService, jwtService utils.JWTService) AuthService {
-	return AuthService{
+func NewAuthService(
+	authRepo repository.AuthRepository,
+	resourceRepo repository.ResourceRepository,
+	roleRepo repository.RoleRepository,
+	roleResourceRepo repository.RoleResourceRepository,
+	userRepo repository.UserRepository,
+	userRoleRepo repository.UserRoleRepository,
+	userSessionRepo repository.UserSessionRepository,
+	redis utils.RedisService,
+	jwtService utils.JWTService) AuthService {
+	return authService{
 		AuthRepository:         authRepo,
 		ResourceRepository:     resourceRepo,
 		RoleRepository:         roleRepo,
@@ -37,7 +62,7 @@ func NewAuthService(authRepo repository.AuthRepository, resourceRepo repository.
 	}
 }
 
-func (s AuthService) checkUserIsAdmin(user *models.Users) response.ErrorResponse {
+func (s authService) checkUserIsAdmin(user *models.Users) response.ErrorResponse {
 	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
 	if err != nil {
 		return response.ErrorResponse{
@@ -56,7 +81,7 @@ func (s AuthService) checkUserIsAdmin(user *models.Users) response.ErrorResponse
 	return response.ErrorResponse{}
 }
 
-func (s AuthService) Register(req *in.RegisterRequest) (out.RegisterResponse, response.ErrorResponse) {
+func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, response.ErrorResponse) {
 	if err := utils.ValidateUsername(req.Username); err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -150,7 +175,7 @@ func (s AuthService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 	return responses, response.ErrorResponse{}
 }
 
-func (s AuthService) Login(req *in.LoginRequest) (interface{}, response.ErrorResponse) {
+func (s authService) Login(req *in.LoginRequest) (interface{}, response.ErrorResponse) {
 	user, err := s.AuthRepository.GetUserByUsername(req.Username)
 	if err != nil {
 		return nil, response.ErrorResponse{
@@ -195,17 +220,9 @@ func (s AuthService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 	return responses, response.ErrorResponse{}
 }
 
-func (s AuthService) GetProfile(token string) (*out.UserResponse, response.ErrorResponse) {
-	claims, err := s.JWTService.ExtractClaims(token)
-	if err != nil {
-		return nil, response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "User not found",
-			Error:   err.Error(),
-		}
-	}
+func (s authService) GetProfile(clientID string) (*out.UserResponse, response.ErrorResponse) {
 
-	user, err := s.AuthRepository.GetUserByClientID(claims.ClientID)
+	user, err := s.AuthRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -217,7 +234,7 @@ func (s AuthService) GetProfile(token string) (*out.UserResponse, response.Error
 	return user, response.ErrorResponse{}
 }
 
-func (s AuthService) RegisterInternalToken(req *struct {
+func (s authService) RegisterInternalToken(req *struct {
 	ResourceName string `json:"resource_name" binding:"required"`
 }) (interface{}, response.ErrorResponse) {
 	resource, err := s.ResourceRepository.GetResourceByName(req.ResourceName)
@@ -249,7 +266,7 @@ func (s AuthService) RegisterInternalToken(req *struct {
 	return token, response.ErrorResponse{}
 }
 
-func (s AuthService) DeleteUserById(userID uint, clientID string) response.ErrorResponse {
+func (s authService) DeleteUserById(userID uint, clientID string) response.ErrorResponse {
 	admin, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return response.ErrorResponse{
@@ -281,7 +298,7 @@ func (s AuthService) DeleteUserById(userID uint, clientID string) response.Error
 	return response.ErrorResponse{}
 }
 
-func (s AuthService) UpdateRole(userID uint, roleID uint, clientID string) response.ErrorResponse {
+func (s authService) UpdateRole(userID uint, roleID uint, clientID string) response.ErrorResponse {
 	admin, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return response.ErrorResponse{
@@ -305,7 +322,7 @@ func (s AuthService) UpdateRole(userID uint, roleID uint, clientID string) respo
 	return response.ErrorResponse{}
 }
 
-func (s AuthService) GetListUser(clientID string) (interface{}, response.ErrorResponse) {
+func (s authService) GetListUser(clientID string) (interface{}, response.ErrorResponse) {
 	_, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, response.ErrorResponse{
@@ -341,7 +358,7 @@ func (s AuthService) GetListUser(clientID string) (interface{}, response.ErrorRe
 	return userResponse, response.ErrorResponse{}
 }
 
-func (s AuthService) ChangePassword(password *struct {
+func (s authService) ChangePassword(password *struct {
 	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required"`
 }, clientID string) response.ErrorResponse {

@@ -9,23 +9,37 @@ import (
 	"log"
 )
 
-type RoleService struct {
+type RoleService interface {
+	RegisterRole(req *struct {
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description" binding:"required"`
+	}, clientID string) (interface{}, error)
+	UpdateRole(roleID uint, req *struct {
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description" binding:"optional"`
+	}, clientID string) (interface{}, error)
+	GetListRole(clientID string) (interface{}, error)
+	GetRoleById(roleID uint, clientID string) (interface{}, error)
+	DeleteRole(roleID uint, clientID string) error
+	GetListRoleUsers(clientID string) (interface{}, error)
+}
+
+type roleService struct {
 	RoleRepository repository.RoleRepository
 	UserRepository repository.UserRepository
 }
 
-// NewRoleService initializes RoleService with repository dependencies
 func NewRoleService(
 	roleRepo repository.RoleRepository,
 	userRepo repository.UserRepository,
 ) RoleService {
-	return RoleService{
+	return roleService{
 		RoleRepository: roleRepo,
 		UserRepository: userRepo,
 	}
 }
 
-func (s RoleService) RegisterRole(req *struct {
+func (s roleService) RegisterRole(req *struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description" binding:"required"`
 }, clientID string) (interface{}, error) {
@@ -52,7 +66,7 @@ func (s RoleService) RegisterRole(req *struct {
 	}, nil
 }
 
-func (s RoleService) UpdateRole(roleID uint, req *struct {
+func (s roleService) UpdateRole(roleID uint, req *struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description" binding:"optional"`
 }, clientID string) (interface{}, error) {
@@ -84,7 +98,7 @@ func (s RoleService) UpdateRole(roleID uint, req *struct {
 	}, nil
 }
 
-func (s RoleService) GetListRole(clientID string) (interface{}, error) {
+func (s roleService) GetListRole(clientID string) (interface{}, error) {
 	_, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
@@ -107,7 +121,7 @@ func (s RoleService) GetListRole(clientID string) (interface{}, error) {
 	return roleResponses, nil
 }
 
-func (s RoleService) GetRoleById(roleID uint, clientID string) (interface{}, error) {
+func (s roleService) GetRoleById(roleID uint, clientID string) (interface{}, error) {
 	_, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
@@ -125,7 +139,7 @@ func (s RoleService) GetRoleById(roleID uint, clientID string) (interface{}, err
 	}, nil
 }
 
-func (s RoleService) DeleteRole(roleID uint, clientID string) error {
+func (s roleService) DeleteRole(roleID uint, clientID string) error {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return err
@@ -159,7 +173,7 @@ func (s RoleService) DeleteRole(roleID uint, clientID string) error {
 	return nil
 }
 
-func (s RoleService) GetListRoleUsers(clientID string) (interface{}, error) {
+func (s roleService) GetListRoleUsers(clientID string) (interface{}, error) {
 	_, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err

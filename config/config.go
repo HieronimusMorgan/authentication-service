@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"log"
 	"time"
 
@@ -47,6 +48,35 @@ func LoadConfig() *Config {
 	}).Info("✅ Configuration loaded successfully")
 
 	return &cfg
+}
+
+// InitGin initializes the Gin engine with appropriate configurations
+func InitGin() *gin.Engine {
+	// Set Gin mode based on environment
+	if ginMode := gin.Mode(); ginMode != gin.ReleaseMode {
+		gin.SetMode(gin.ReleaseMode)
+		logrus.Warn("⚠ Running in DEBUG mode. Use `GIN_MODE=release` in production.")
+	} else {
+		logrus.Info("✅ Running in RELEASE mode.")
+	}
+
+	// Create a new Gin router
+	engine := gin.New()
+
+	// Middleware
+	engine.Use(gin.Recovery()) // Handles panics and prevents crashes
+	engine.Use(gin.Logger())   // Logs HTTP requests
+
+	// Security Headers (Prevents Clickjacking & XSS Attacks)
+	engine.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("X-Frame-Options", "DENY")
+		c.Writer.Header().Set("X-XSS-Protection", "1; mode=block")
+		c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
+		c.Next()
+	})
+
+	logrus.Info("🚀 Gin HTTP server initialized successfully")
+	return engine
 }
 
 // InitDatabase initializes and returns a PostgreSQL database connection with retry logic

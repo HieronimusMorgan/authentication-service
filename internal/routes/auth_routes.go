@@ -2,11 +2,11 @@ package routes
 
 import (
 	"authentication/config"
-	"authentication/internal/handler"
+	"authentication/internal/controller"
 	"github.com/gin-gonic/gin"
 )
 
-func AuthRoutes(r *gin.Engine, middleware config.Middleware, authHandler handler.AuthHandler) {
+func AuthRoutes(r *gin.Engine, middleware config.Middleware, authHandler controller.AuthHController) {
 
 	// Public routes: No middleware applied
 	public := r.Group("/auth/v1")

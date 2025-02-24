@@ -1,11 +1,11 @@
 package routes
 
 import (
-	"authentication/internal/handler"
+	"authentication/internal/controller"
 	"github.com/gin-gonic/gin"
 )
 
-func RoleRoutes(r *gin.Engine, roleHandler handler.RoleHandler) {
+func RoleRoutes(r *gin.Engine, roleHandler controller.RoleController) {
 
 	protected := r.Group("/auth/v1/role")
 	//protected.Use(middleware.AuthMiddleware(roleService))
