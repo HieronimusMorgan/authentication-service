@@ -1,128 +1,123 @@
-# Authentication
+# 🔐 Authentication Service
 
-## Description
+## 📖 Description
 
-**Authentication** is a robust and secure service designed to handle user authentication and authorization for modern web and mobile applications. This microservice provides features like user registration, login, token management, and role-based access control (RBAC) to ensure a secure and seamless authentication experience.
-
----
-
-## Key Features
-
-- **User Registration**: Allows users to create accounts with validation for secure data handling.
-- **Login and Authentication**: Supports authentication using secure mechanisms like hashed passwords and JSON Web Tokens (JWT).
-- **Token Management**:
-  - Generate access tokens for user sessions.
-  - Refresh tokens for session renewal without requiring re-login.
-- **Role-Based Access Control (RBAC)**: Assign roles to users (e.g., admin, user) and manage permissions for protected resources.
-- **Resource Management**: Enables defining and restricting access to application resources based on roles.
-- **Internal Token Support**: Provides internal tokens for secure inter-service communication in microservices architecture.
-- **Redis Integration**: Caches user data and tokens for optimized performance.
-- **API Health Check**: Includes a default endpoint to check service health.
+**Authentication** is a robust and secure microservice designed to handle **user authentication and authorization** for modern **web and mobile applications**. This service provides features like **user registration, login, token management, and role-based access control (RBAC)** to ensure a seamless and secure authentication experience.
 
 ---
 
-## Technology Stack
+## ✨ Key Features
 
-- **Backend Framework**: [Gin](https://gin-gonic.com/) - A high-performance HTTP web framework.
-- **Database**: [PostgreSQL](https://www.postgresql.org/) or [SQLite](https://www.sqlite.org/) for persistence.
-- **Authentication**: [JWT](https://jwt.io/) for stateless authentication.
-- **Cache**: [Redis](https://redis.io/) for token storage.
-- **ORM**: [GORM](https://gorm.io/) for database operations.
+- ✅ **User Registration**: Allows users to create accounts with secure validation and password hashing.
+- 🔑 **Login & Authentication**: Secure authentication using **hashed passwords** and **JSON Web Tokens (JWT)**.
+- 🔄 **Token Management**:
+  - Generate **access tokens** for user sessions.
+  - Issue **refresh tokens** for session renewal without requiring re-login.
+- 🎭 **Role-Based Access Control (RBAC)**: Assign roles (e.g., **admin, user**) and enforce permissions for protected resources.
+- 📂 **Resource Management**: Define and restrict access to application resources **based on roles**.
+- 🔒 **Internal Token Support**: Generate **internal tokens** for **secure inter-service communication**.
+- 🚀 **Redis Integration**: Caches **user data** and **tokens** for optimized performance.
+- ⚙️ **API Health Check**: Includes an endpoint to **check service health**.
 
 ---
 
-## Installation and Setup
+## 🛠 Technology Stack
+
+- **Backend Framework**: [Gin](https://gin-gonic.com/) - A high-performance HTTP web framework for Golang.
+- **Database**: [PostgreSQL](https://www.postgresql.org/) / [SQLite](https://www.sqlite.org/)
+- **Authentication**: [JWT](https://jwt.io/) for **stateless authentication**.
+- **Cache**: [Redis](https://redis.io/) for **token storage** and caching.
+- **ORM**: [GORM](https://gorm.io/) for **database operations**.
+
+---
+
+## 📦 Installation and Setup
 
 ### Prerequisites
 
-- [Go](https://golang.org/doc/install) installed.
-- A database setup (PostgreSQL or SQLite).
-- Redis installed and running.
+- Install **[Go](https://golang.org/doc/install)**.
+- Set up **PostgreSQL or SQLite**.
+- Install and run **Redis**.
 
-### Steps
+### Steps to Run
 
 1. Clone the repository:
-
    ```bash
    git clone https://github.com/HieronimusMorgan/authentication.git
    cd authentication
    ```
 
 2. Install dependencies:
-
    ```bash
    go mod tidy
    ```
 
 3. Configure environment variables:
-
-   - Create a `.env` file to store sensitive data like database connection strings, Redis connection, and JWT secret keys.
+   - Create a `.env` file to store **database connection strings, Redis connection, and JWT secrets**.
 
 4. Run the application:
-
    ```bash
    go run main.go
    ```
 
 ---
 
-## API Endpoints
+## 🔗 API Endpoints
 
-### Public Routes
+### 🔓 Public Routes
+- `POST /v1/register/internal-token` → Generate **internal tokens** for inter-service communication.
 
-- `POST /v1/register/internal-token`: Generate internal tokens for inter-service communication.
+### 🔒 Protected Routes (Require Authentication)
+- `POST /v1/register` → **User registration**.
+- `POST /v1/login` → **User login**.
+- `POST /v1/refresh` → **Refresh token** to extend session.
+- `GET /v1/profile` → **Fetch user profile** (requires valid token).
 
-### Protected Routes (Require Authentication)
-
-- `POST /v1/register`: User registration.
-- `POST /v1/login`: User login.
-- `POST /v1/refresh`: Refresh token (to renew session).
-- `GET /v1/profile`: Fetch user profile (requires a valid token).
-
-### Utility
-
-- `GET /health`: Check service health.
+### ⚙️ Utility
+- `GET /health` → **Service health check**.
 
 ---
 
-## Internal Logic Overview
+## 🔍 Internal Logic Overview
 
-### 1. **Register**
-- **Validates input** (username and password).
-- **Hashes the password** for secure storage.
-- **Creates a user** in the database.
-- **Assigns resources** to the user.
-- **Generates JWT tokens** for user sessions.
-- **Caches user data** and tokens in Redis.
+### 1️⃣ **User Registration**
+- **Validates input** (username & password).
+- **Hashes the password** before storing.
+- **Creates user** in the database.
+- **Assigns roles & resources** to the user.
+- **Generates JWT tokens**.
+- **Caches user data & tokens** in Redis.
 
-### 2. **Login**
+### 2️⃣ **User Login**
 - **Validates credentials** by comparing hashed passwords.
-- **Generates JWT tokens** upon successful authentication.
-- **Caches user session** data in Redis.
+- **Generates JWT tokens** on successful authentication.
+- **Stores session data** in Redis.
 
-### 3. **Get Profile**
-- **Extracts user claims** from the token.
-- **Fetches user data** from the database using the ClientID.
+### 3️⃣ **Fetching User Profile**
+- **Extracts user claims** from token.
+- **Fetches user data** using ClientID.
 
-### 4. **Register Internal Token**
-- **Validates resource name** from the request.
-- **Generates a unique internal token** for secure inter-service communication.
-- **Stores the token** in the database.
+### 4️⃣ **Internal Token Registration**
+- **Validates resource name**.
+- **Generates unique internal token**.
+- **Stores token** securely in database.
 
 ---
 
-## Redis Integration
+## ⚡ Redis Integration
 
-### Purpose
-- **Token Caching**: Speeds up token validation and reduces database load.
-- **User Session Management**: Stores user session data for quick retrieval.
+### 🚀 Purpose
+- **Token Caching** → Speeds up validation & reduces DB queries.
+- **Session Management** → Stores session data for quick retrieval.
 
-### Commands Used
-- **Set Data**:
+### 🛠 Commands Used
+
+- **Save Data to Redis**:
   ```go
   utils.SaveDataToRedis("key", "field", value)
   ```
-- **Get Data**:
+
+- **Retrieve Data from Redis**:
   ```go
   var token string
   utils.GetDataFromRedis("key", "field", &token)
@@ -130,13 +125,22 @@
 
 ---
 
-## Contributions
+## 🤝 Contributions
 
-Contributions are welcome! Please follow the guidelines in the `CONTRIBUTING.md` file to submit issues, suggest features, or create pull requests.
+Contributions are **welcome**! Follow these steps:
+
+1. Fork the repository.
+2. Create a new branch.
+3. Submit a pull request with **detailed changes**.
+
+For major updates, **open an issue** first to discuss your proposal.
 
 ---
 
-## License
+## 📜 License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the **MIT License**. See the `LICENSE` file for more details.
 
+---
+
+This **Authentication Service** is designed to **enhance security and efficiency** in modern applications, ensuring seamless user authentication and authorization. 🚀🔐
