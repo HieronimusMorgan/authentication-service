@@ -13,9 +13,11 @@ import (
 type AuthRepository interface {
 	CreateUser(user *models.Users) error
 	GetUserByUsername(username string) (*models.Users, error)
-	GetUserByClientID(clientID string) (*out.UserResponse, error)
+	GetUserByClientID(clientID string) (*models.Users, error)
+	GetUserResponseByClientID(clientID string) (*out.UserResponse, error)
 	AssignUserResource(userID uint, resourceID uint) (*AssignResource, error)
 	AssignUserResourceByName(userID uint, resourceName string) (*AssignResource, error)
+	UpdateProfile(user *models.Users) error
 }
 
 type authRepository struct {
@@ -37,7 +39,13 @@ func (r authRepository) GetUserByUsername(username string) (*models.Users, error
 	return &user, err
 }
 
-func (r authRepository) GetUserByClientID(clientID string) (*out.UserResponse, error) {
+func (r authRepository) GetUserByClientID(clientID string) (*models.Users, error) {
+	var user models.Users
+	err := r.db.Table("authentication.users").Where("client_id = ?", clientID).First(&user).Error
+	return &user, err
+}
+
+func (r authRepository) GetUserResponseByClientID(clientID string) (*out.UserResponse, error) {
 	var user out.UserResponse
 	err := r.db.Table("authentication.users").Where("client_id = ?", clientID).First(&user).Error
 	return &user, err
@@ -165,6 +173,10 @@ func (r authRepository) AssignUserResourceByName(userID uint, resourceName strin
 		Role:       user.Role.Name,
 		Resource:   resource.Name,
 	}, nil
+}
+
+func (r authRepository) UpdateProfile(user *models.Users) error {
+	return r.db.Save(user).Error
 }
 
 type AssignResource struct {

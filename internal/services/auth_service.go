@@ -15,6 +15,8 @@ type AuthService interface {
 	Register(req *in.RegisterRequest) (out.RegisterResponse, response.ErrorResponse)
 	Login(req *in.LoginRequest) (interface{}, response.ErrorResponse)
 	GetProfile(clientID string) (*out.UserResponse, response.ErrorResponse)
+	UpdateNameUserProfile(updateNameRequest *in.UpdateNameRequest, clientID string) (interface{}, error)
+	UpdatePhotoUserProfile(req *in.UpdatePhotoRequest, clientID string) (interface{}, error)
 	RegisterInternalToken(req *struct {
 		ResourceName string `json:"resource_name" binding:"required"`
 	}) (interface{}, response.ErrorResponse)
@@ -222,7 +224,7 @@ func (s authService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 
 func (s authService) GetProfile(clientID string) (*out.UserResponse, response.ErrorResponse) {
 
-	user, err := s.AuthRepository.GetUserByClientID(clientID)
+	user, err := s.AuthRepository.GetUserResponseByClientID(clientID)
 	if err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -232,6 +234,58 @@ func (s authService) GetProfile(clientID string) (*out.UserResponse, response.Er
 	}
 
 	return user, response.ErrorResponse{}
+}
+
+func (s authService) UpdateNameUserProfile(updateNameRequest *in.UpdateNameRequest, clientID string) (interface{}, error) {
+	user, err := s.AuthRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return nil, err
+	}
+
+	user.FirstName = utils.ValidationTrimSpace(updateNameRequest.FirstName)
+	user.LastName = utils.ValidationTrimSpace(updateNameRequest.LastName)
+	user.FullName = user.FirstName + " " + user.LastName
+	user.UpdatedBy = user.FullName
+
+	err = s.AuthRepository.UpdateProfile(user)
+	if err != nil {
+		return nil, err
+	}
+
+	return out.UserResponse{
+		UserID:         user.UserID,
+		ClientID:       user.ClientID,
+		Username:       user.Username,
+		FirstName:      user.FirstName,
+		LastName:       user.LastName,
+		PhoneNumber:    user.PhoneNumber,
+		ProfilePicture: user.ProfilePicture,
+	}, nil
+}
+
+func (s authService) UpdatePhotoUserProfile(req *in.UpdatePhotoRequest, clientID string) (interface{}, error) {
+	user, err := s.AuthRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return nil, err
+	}
+
+	user.ProfilePicture = req.ProfilePicture
+	user.UpdatedBy = user.FullName
+
+	err = s.AuthRepository.UpdateProfile(user)
+	if err != nil {
+		return nil, err
+	}
+
+	return out.UserResponse{
+		UserID:         user.UserID,
+		ClientID:       user.ClientID,
+		Username:       user.Username,
+		FirstName:      user.FirstName,
+		LastName:       user.LastName,
+		PhoneNumber:    user.PhoneNumber,
+		ProfilePicture: user.ProfilePicture,
+	}, nil
 }
 
 func (s authService) RegisterInternalToken(req *struct {

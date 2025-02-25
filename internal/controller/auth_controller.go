@@ -15,6 +15,8 @@ type AuthHController interface {
 	Register(c *gin.Context)
 	Login(c *gin.Context)
 	GetProfile(c *gin.Context)
+	UpdateNameUserProfile(c *gin.Context)
+	UpdatePhotoUserProfile(c *gin.Context)
 	RegisterInternalToken(c *gin.Context)
 	DeleteUser(ctx *gin.Context)
 	UpdateRole(ctx *gin.Context)
@@ -116,6 +118,52 @@ func (h authController) GetProfile(c *gin.Context) {
 	}
 
 	handleSuccessResponse(c, http.StatusOK, "Profile retrieved successfully", user)
+}
+
+func (h authController) UpdateNameUserProfile(c *gin.Context) {
+	var req in.UpdateNameRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+
+	token, exist := utils.ExtractTokenClaims(c)
+	if !exist {
+		response.SendResponse(c, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	user, err := h.AuthService.UpdateNameUserProfile(&req, token.ClientID)
+	if err != nil {
+		handleErrorResponse(c, http.StatusInternalServerError, "Failed to update profile", err)
+		return
+	}
+
+	handleSuccessResponse(c, http.StatusOK, "Profile updated successfully", user)
+}
+
+func (h authController) UpdatePhotoUserProfile(c *gin.Context) {
+	var req in.UpdatePhotoRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+
+	token, exist := utils.ExtractTokenClaims(c)
+	if !exist {
+		response.SendResponse(c, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	user, err := h.AuthService.UpdatePhotoUserProfile(&req, token.ClientID)
+	if err != nil {
+		handleErrorResponse(c, http.StatusInternalServerError, "Failed to update profile", err)
+		return
+	}
+
+	handleSuccessResponse(c, http.StatusOK, "Profile updated successfully", user)
 }
 
 func (h authController) RegisterInternalToken(c *gin.Context) {

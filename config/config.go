@@ -28,7 +28,7 @@ type Config struct {
 	DBPort     string `envconfig:"DB_PORT" default:"5432"`
 	DBUser     string `envconfig:"DB_USER" default:"postgres"`
 	DBPassword string `envconfig:"DB_PASSWORD" default:"admin"`
-	DBName     string `envconfig:"DB_NAME" default:"postgres"`
+	DBName     string `envconfig:"DB_NAME" default:"authentication"`
 	DBSchema   string `envconfig:"DB_SCHEMA" default:"authentication"`
 	DBSSLMode  string `envconfig:"DB_SSLMODE" default:"disable"`
 }
