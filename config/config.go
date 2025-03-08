@@ -19,7 +19,8 @@ import (
 // Config holds application-wide configurations
 type Config struct {
 	AppPort    string `envconfig:"APP_PORT" default:"8080"`
-	JWTSecret  string `envconfig:"JWT_SECRET" default:"a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6"`
+	JWTSecret  string `envconfig:"JWT_SECRET" default:"8dT2pPz1LrA4WmE9QfX7sVY0b3J6N5CzKoU8hM2xYTgWqLk"`
+	AesEncrypt string `envconfig:"AES_ENCRYPT" default:"E8gWmPq4R7YTXA9LJ0b3VNdT1KoU6C8h"`
 	RedisHost  string `envconfig:"REDIS_HOST" default:"localhost"`
 	RedisPort  string `envconfig:"REDIS_PORT" default:"6379"`
 	RedisDB    int    `envconfig:"REDIS_DB" default:"0"`

@@ -6,6 +6,9 @@ import (
 	"authentication/internal/repository"
 	"authentication/internal/services"
 	"authentication/internal/utils"
+	controllercron "authentication/internal/utils/cron/controller"
+	repositorycron "authentication/internal/utils/cron/repository"
+	"authentication/internal/utils/cron/service"
 	"log"
 	"os"
 	"os/signal"
@@ -42,10 +45,12 @@ func NewServerConfig() (*ServerConfig, error) {
 		JWTService: utils.NewJWTService(cfg.JWTSecret),
 	}
 
+	server.initAesEncrypt()
 	server.initRepository()
 	server.initServices()
 	server.initController()
 	server.initMiddleware()
+	server.initCron()
 	return server, nil
 }
 
@@ -73,7 +78,8 @@ func (s *ServerConfig) initServices() {
 			s.Repository.UserRoleRepo,
 			s.Repository.UserSessionRepo,
 			s.Redis,
-			s.JWTService),
+			s.JWTService,
+			s.Encryption.EncryptionService),
 		ResourceService:    services.NewResourceService(s.Repository.ResourceRepo, s.Repository.RoleResourceRepo, s.Repository.RoleRepo, s.Repository.UserRepo),
 		RoleService:        services.NewRoleService(s.Repository.RoleRepo, s.Repository.UserRepo),
 		UserSessionService: services.NewUsersSessionService(s.Repository.UserSessionRepo, s.Repository.UserRepo, s.JWTService, s.Redis),
@@ -98,5 +104,20 @@ func (s *ServerConfig) initMiddleware() {
 	s.Middleware = Middleware{
 		AuthMiddleware:  middleware.NewAuthMiddleware(s.JWTService),
 		AdminMiddleware: middleware.NewAdminMiddleware(s.JWTService),
+	}
+}
+
+func (s *ServerConfig) initCron() {
+	s.Cron = Cron{
+		CronRepository: repositorycron.NewCronRepository(*s.DB),
+		CronService:    service.NewCronService(*s.DB, repositorycron.NewCronRepository(*s.DB), s.Services.UserSessionService),
+		CronController: controllercron.NewCronJobController(service.NewCronService(*s.DB, repositorycron.NewCronRepository(*s.DB), s.Services.UserSessionService)),
+	}
+	s.Cron.CronService.Start()
+}
+
+func (s *ServerConfig) initAesEncrypt() {
+	s.Encryption = Encryption{
+		EncryptionService: utils.NewEncryption(s.Config.AesEncrypt),
 	}
 }

@@ -39,6 +39,7 @@ type authService struct {
 	UserSessionRepository  repository.UserSessionRepository
 	RedisService           utils.RedisService
 	JWTService             utils.JWTService
+	Encryption             utils.Encryption
 }
 
 func NewAuthService(
@@ -50,7 +51,8 @@ func NewAuthService(
 	userRoleRepo repository.UserRoleRepository,
 	userSessionRepo repository.UserSessionRepository,
 	redis utils.RedisService,
-	jwtService utils.JWTService) AuthService {
+	jwtService utils.JWTService,
+	Encryption utils.Encryption) AuthService {
 	return authService{
 		AuthRepository:         authRepo,
 		ResourceRepository:     resourceRepo,
@@ -61,6 +63,7 @@ func NewAuthService(
 		UserSessionRepository:  userSessionRepo,
 		RedisService:           redis,
 		JWTService:             jwtService,
+		Encryption:             Encryption,
 	}
 }
 
@@ -113,7 +116,14 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 	firstName := utils.ValidationTrimSpace(req.FirstName)
 	lastName := utils.ValidationTrimSpace(req.LastName)
 	fullName := firstName + " " + lastName
-
+	asePhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Phone number is invalid",
+			Error:   err.Error(),
+		}
+	}
 	user := &models.Users{
 		ClientID:       utils.GenerateClientID(),
 		Username:       req.Username,
@@ -121,7 +131,7 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		FirstName:      firstName,
 		LastName:       lastName,
 		FullName:       fullName,
-		PhoneNumber:    req.PhoneNumber,
+		PhoneNumber:    asePhoneNumber,
 		ProfilePicture: req.ProfilePicture,
 		RoleID:         role.RoleID,
 		CreatedBy:      "system",
@@ -164,12 +174,13 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 	_ = s.RedisService.SaveData(utils.Token, user.ClientID, token)
 	_ = s.RedisService.SaveData(utils.User, user.ClientID, user)
 
+	phoneNumber, _ := s.Encryption.Decrypt(user.PhoneNumber)
 	responses := out.RegisterResponse{
 		UserID:         user.UserID,
 		Username:       user.Username,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
-		PhoneNumber:    user.PhoneNumber,
+		PhoneNumber:    phoneNumber,
 		ProfilePicture: user.ProfilePicture,
 		Token:          token.AccessToken,
 		RefreshToken:   token.RefreshToken,
@@ -209,12 +220,20 @@ func (s authService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 	_ = s.RedisService.SaveData("token", user.ClientID, token)
 	_ = s.RedisService.SaveData("user", user.ClientID, user)
 
+	var phoneNumber string
+	decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
+	if err != nil {
+		phoneNumber = user.PhoneNumber
+	} else {
+		phoneNumber = decrypt
+	}
+
 	responses := out.LoginResponse{
 		UserID:         user.UserID,
 		Username:       user.Username,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
-		PhoneNumber:    user.PhoneNumber,
+		PhoneNumber:    phoneNumber,
 		ProfilePicture: user.ProfilePicture,
 		Token:          token.AccessToken,
 		RefreshToken:   token.RefreshToken,
@@ -232,6 +251,16 @@ func (s authService) GetProfile(clientID string) (*out.UserResponse, response.Er
 			Error:   err.Error(),
 		}
 	}
+
+	var phoneNumber string
+	decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
+	if err != nil {
+		phoneNumber = user.PhoneNumber
+	} else {
+		phoneNumber = decrypt
+	}
+
+	user.PhoneNumber = phoneNumber
 
 	return user, response.ErrorResponse{}
 }
@@ -252,13 +281,20 @@ func (s authService) UpdateNameUserProfile(updateNameRequest *in.UpdateNameReque
 		return nil, err
 	}
 
+	var phoneNumber string
+	decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
+	if err != nil {
+		phoneNumber = user.PhoneNumber
+	} else {
+		phoneNumber = decrypt
+	}
 	return out.UserResponse{
 		UserID:         user.UserID,
 		ClientID:       user.ClientID,
 		Username:       user.Username,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
-		PhoneNumber:    user.PhoneNumber,
+		PhoneNumber:    phoneNumber,
 		ProfilePicture: user.ProfilePicture,
 	}, nil
 }
@@ -277,13 +313,20 @@ func (s authService) UpdatePhotoUserProfile(req *in.UpdatePhotoRequest, clientID
 		return nil, err
 	}
 
+	var phoneNumber string
+	decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
+	if err != nil {
+		phoneNumber = user.PhoneNumber
+	} else {
+		phoneNumber = decrypt
+	}
 	return out.UserResponse{
 		UserID:         user.UserID,
 		ClientID:       user.ClientID,
 		Username:       user.Username,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
-		PhoneNumber:    user.PhoneNumber,
+		PhoneNumber:    phoneNumber,
 		ProfilePicture: user.ProfilePicture,
 	}, nil
 }
@@ -398,13 +441,20 @@ func (s authService) GetListUser(clientID string) (interface{}, response.ErrorRe
 	var userResponse []out.UserResponse
 
 	for _, user := range *users {
+		var phoneNumber string
+		decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
+		if err != nil {
+			phoneNumber = user.PhoneNumber
+		} else {
+			phoneNumber = decrypt
+		}
 		userResponse = append(userResponse, out.UserResponse{
 			UserID:         user.UserID,
 			ClientID:       user.ClientID,
 			Username:       user.Username,
 			FirstName:      user.FirstName,
 			LastName:       user.LastName,
-			PhoneNumber:    user.PhoneNumber,
+			PhoneNumber:    phoneNumber,
 			ProfilePicture: user.ProfilePicture,
 		})
 	}

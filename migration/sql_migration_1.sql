@@ -128,6 +128,25 @@ CREATE TABLE user_sessions
     FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
 
+CREATE TABLE cron_jobs
+(
+    id               SERIAL PRIMARY KEY,
+    name             VARCHAR(255) NOT NULL UNIQUE,
+    schedule         VARCHAR(255) NOT NULL, -- Cron expression
+    is_active        BOOLEAN   DEFAULT TRUE,
+    description      TEXT,
+    last_executed_at TIMESTAMP,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by       VARCHAR(255),
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by       VARCHAR(255),
+    deleted_at       TIMESTAMP,
+    deleted_by       VARCHAR(255)
+);
+
+INSERT INTO cron_jobs (name, schedule, is_active, description, created_by)
+VALUES ('user_session_cleanup', '0 5 * * *', true, 'Check User Session Expired', 'system');
+
 
 INSERT INTO roles (name, description, created_at, created_by)
 VALUES ('Super Admin', 'Super Administrator with highest privileges', CURRENT_TIMESTAMP, 'system'),

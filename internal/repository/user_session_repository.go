@@ -7,6 +7,7 @@ import (
 
 type UserSessionRepository interface {
 	GetUserSessionByUserID(userID uint) (*models.UserSession, error)
+	GetUserSession() (*[]models.UserSession, error)
 	AddUserSession(userSession *models.UserSession) error
 	UpdateSession(session *models.UserSession) error
 }
@@ -26,6 +27,15 @@ func (r userSessionRepository) GetUserSessionByUserID(userID uint) (*models.User
 		return nil, err
 	}
 	return userSession, nil
+}
+
+func (r userSessionRepository) GetUserSession() (*[]models.UserSession, error) {
+	var userSessions *[]models.UserSession
+	err := r.db.Find(&userSessions).Error
+	if err != nil {
+		return nil, err
+	}
+	return userSessions, nil
 }
 
 func (r userSessionRepository) AddUserSession(userSession *models.UserSession) error {

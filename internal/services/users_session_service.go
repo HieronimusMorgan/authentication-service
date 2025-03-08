@@ -4,6 +4,7 @@ import (
 	"authentication/internal/models"
 	"authentication/internal/repository"
 	"authentication/internal/utils"
+	"github.com/rs/zerolog/log"
 	"time"
 )
 
@@ -11,6 +12,7 @@ type UsersSessionService interface {
 	AddUserSession(userID uint, token, refreshToken, ipAddress, userAgent string) error
 	GetUserSessionByUserID(userID uint) (*models.UserSession, error)
 	LogoutSession(userID uint) error
+	CheckUser()
 }
 
 type usersSessionService struct {
@@ -101,4 +103,40 @@ func (s usersSessionService) LogoutSession(userID uint) error {
 	_ = s.Redis.SaveData(utils.UserSession, user.ClientID, session)
 
 	return s.UserSessionRepository.UpdateSession(session)
+}
+
+func (s usersSessionService) CheckUser() {
+	userSession, err := s.UserSessionRepository.GetUserSession()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get user session")
+		return
+	}
+
+	for _, session := range *userSession {
+		go func(session models.UserSession) {
+			if time.Now().After(session.ExpiresAt) {
+				session.IsActive = false
+				session.UpdatedBy = "system"
+				_ = s.UserSessionRepository.UpdateSession(&session)
+				user, _ := s.UserRepository.GetUserByID(session.UserID)
+				if user != nil {
+					log.Info().Str("client_id", user.ClientID).Msg("User session expired")
+					err = s.Redis.DeleteData(utils.UserSession, user.ClientID)
+					if err != nil {
+						log.Error().Err(err).Msg("Failed to delete data from Redis")
+					}
+					err = s.Redis.DeleteToken(user.ClientID)
+					if err != nil {
+						log.Error().Err(err).Msg("Failed to delete token from Redis")
+					}
+					err = s.Redis.DeleteData(utils.User, user.ClientID)
+					if err != nil {
+						log.Error().Err(err).Msg("Failed to delete user from Redis")
+					}
+				} else {
+					log.Error().Err(err).Msg("Failed to get user by ID")
+				}
+			}
+		}(session)
+	}
 }
