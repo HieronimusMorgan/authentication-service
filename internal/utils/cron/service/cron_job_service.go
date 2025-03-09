@@ -27,10 +27,11 @@ type cronService struct {
 	jobs           map[uint]cron.EntryID
 	cronRepository repository.CronRepository
 	userSession    services.UsersSessionService
+	authService    services.AuthService
 }
 
 // NewCronService initializes and returns a CronService instance
-func NewCronService(db gorm.DB, cronRepository repository.CronRepository, userSession services.UsersSessionService) CronService {
+func NewCronService(db gorm.DB, cronRepository repository.CronRepository, userSession services.UsersSessionService, authService services.AuthService) CronService {
 	return &cronService{
 		db:             db,
 		scheduler:      cron.New(), // Enables second-level precision
@@ -38,6 +39,7 @@ func NewCronService(db gorm.DB, cronRepository repository.CronRepository, userSe
 		mu:             sync.Mutex{},
 		cronRepository: cronRepository,
 		userSession:    userSession,
+		authService:    authService,
 	}
 }
 
@@ -105,6 +107,8 @@ func (cs *cronService) executeJob(job model.CronJob) {
 	switch job.Name {
 	case "user_session_cleanup":
 		cs.userSession.CheckUser()
+	case "reset_pin_attempts":
+		cs.authService.ResetPinAttempts()
 	default:
 		log.Printf("Unknown job: %s\n", job.Name)
 	}

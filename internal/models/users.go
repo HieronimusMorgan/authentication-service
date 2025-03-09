@@ -9,7 +9,11 @@ type Users struct {
 	UserID         uint           `gorm:"primaryKey" json:"user_id,omitempty"`
 	ClientID       string         `gorm:"unique;not null" json:"client_id,omitempty"`
 	Username       string         `gorm:"unique;not null" json:"username,omitempty"`
-	Password       string         `gorm:"not null" json:"-"` // Hashed password, omit from JSON
+	Email          string         `gorm:"unique;not null" json:"email,omitempty"`
+	Password       string         `gorm:"not null" json:"-"`
+	PinCode        string         `gorm:"not null" json:"-"`
+	PinAttempts    int            `gorm:"default:0" json:"-"`
+	PinLastUpdated time.Time      `json:"-"`
 	FirstName      string         `json:"first_name,omitempty"`
 	LastName       string         `json:"last_name,omitempty"`
 	FullName       string         `json:"full_name,omitempty"`

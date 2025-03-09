@@ -18,6 +18,7 @@ type AuthRepository interface {
 	AssignUserResource(userID uint, resourceID uint) (*AssignResource, error)
 	AssignUserResourceByName(userID uint, resourceName string) (*AssignResource, error)
 	UpdateProfile(user *models.Users) error
+	GetUserByEmail(email string) (interface{}, error)
 }
 
 type authRepository struct {
@@ -177,6 +178,12 @@ func (r authRepository) AssignUserResourceByName(userID uint, resourceName strin
 
 func (r authRepository) UpdateProfile(user *models.Users) error {
 	return r.db.Save(user).Error
+}
+
+func (r authRepository) GetUserByEmail(email string) (interface{}, error) {
+	var user models.Users
+	err := r.db.Table("authentication.users").Where("email = ?", email).First(&user).Error
+	return &user, err
 }
 
 type AssignResource struct {

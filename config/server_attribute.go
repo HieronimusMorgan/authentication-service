@@ -110,8 +110,8 @@ func (s *ServerConfig) initMiddleware() {
 func (s *ServerConfig) initCron() {
 	s.Cron = Cron{
 		CronRepository: repositorycron.NewCronRepository(*s.DB),
-		CronService:    service.NewCronService(*s.DB, repositorycron.NewCronRepository(*s.DB), s.Services.UserSessionService),
-		CronController: controllercron.NewCronJobController(service.NewCronService(*s.DB, repositorycron.NewCronRepository(*s.DB), s.Services.UserSessionService)),
+		CronService:    service.NewCronService(*s.DB, repositorycron.NewCronRepository(*s.DB), s.Services.UserSessionService, s.Services.AuthService),
+		CronController: controllercron.NewCronJobController(service.NewCronService(*s.DB, repositorycron.NewCronRepository(*s.DB), s.Services.UserSessionService, s.Services.AuthService)),
 	}
 	s.Cron.CronService.Start()
 }

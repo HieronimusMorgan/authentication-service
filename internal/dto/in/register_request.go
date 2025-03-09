@@ -5,6 +5,8 @@ type RegisterRequest struct {
 	Password       string `json:"password" binding:"required"`
 	FirstName      string `json:"first_name" binding:"required"`
 	LastName       string `json:"last_name" binding:"required"`
+	Email          string `json:"email,omitempty"`
 	PhoneNumber    string `json:"phone_number" binding:"required"`
+	PinCode        string `json:"pin_code" binding:"required"`
 	ProfilePicture string `json:"profile_picture,omitempty"`
 }

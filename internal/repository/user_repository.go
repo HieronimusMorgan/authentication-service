@@ -21,6 +21,7 @@ type UserRepository interface {
 	GetListUser() (*[]models.Users, error)
 	GetUserByResourceID(resourceID uint) (*[]models.Users, error)
 	ChangePassword(user *models.Users) error
+	UpdatePinAttempts(user models.Users) error
 }
 
 type userRepository struct {
@@ -164,6 +165,16 @@ func (r userRepository) ChangePassword(user *models.Users) error {
 	err := r.db.Model(&user).
 		Update("password", user.Password).
 		Update("updated_by", user.UpdatedBy).
+		Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r userRepository) UpdatePinAttempts(user models.Users) error {
+	err := r.db.Model(&user).
+		Update("pin_attempts", 0).
 		Error
 	if err != nil {
 		return err

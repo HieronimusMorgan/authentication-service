@@ -33,3 +33,11 @@ func ConvertToUint(input string) (uint, error) {
 	}
 	return uint(parsed), nil
 }
+
+func ValidateEmail(email string) error {
+	validEmail := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	if !validEmail.MatchString(email) {
+		return errors.New("invalid email format")
+	}
+	return nil
+}
