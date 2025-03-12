@@ -115,7 +115,7 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		}
 	}
 
-	hashedPin, err := s.Encryption.Encrypt(req.PinCode)
+	hashedPin, err := s.Encryption.HashPassword(req.PinCode)
 	if err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -306,18 +306,8 @@ func (s authService) VerifyPinCode(req *struct {
 		}
 	}
 
-	hashPin, err := s.Encryption.Encrypt(req.PinCode)
+	err = s.Encryption.CheckPassword(user.PinCode, req.PinCode)
 	if err != nil {
-		return out.RegisterResponse{}, response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Invalid Pin Code",
-			Error:   err.Error(),
-		}
-	}
-	log.Printf("Pin Code: %s", req.PinCode)
-	log.Printf("Pin Code: %s", hashPin)
-	user, err = s.UserRepository.GetUserByPinCodeAndClientID(hashPin, data.ClientID)
-	if err != nil || user.UserID == 0 {
 		if updateErr := s.UserRepository.UpdatePinAttempts(data.ClientID); updateErr != nil {
 			return out.RegisterResponse{}, response.ErrorResponse{
 				Code:    http.StatusBadRequest,
@@ -328,7 +318,7 @@ func (s authService) VerifyPinCode(req *struct {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid Pin Code",
-			Error:   "Invalid Pin Code",
+			Error:   err.Error(),
 		}
 	}
 
@@ -373,7 +363,7 @@ func (s authService) ChangePinCode(req *struct {
 		}
 	}
 
-	hashedOldPin, err := s.Encryption.Encrypt(req.OldPinCode)
+	err = s.Encryption.CheckPassword(user.PinCode, req.OldPinCode)
 	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -382,21 +372,20 @@ func (s authService) ChangePinCode(req *struct {
 		}
 	}
 
-	user, err = s.UserRepository.GetUserByPinCodeAndClientID(hashedOldPin, data.ClientID)
-	if err != nil || user.UserID == 0 {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Invalid Pin Code",
-			Error:   "Invalid Pin Code",
-		}
-	}
-
-	hashedNewPin, err := s.Encryption.Encrypt(req.NewPinCode)
+	hashedNewPin, err := s.Encryption.HashPassword(req.NewPinCode)
 	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid Pin Code",
 			Error:   err.Error(),
+		}
+	}
+
+	if hashedNewPin == user.PinCode {
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Pin Code",
+			Error:   "Old Pin and New Pin is same",
 		}
 	}
 
@@ -602,7 +591,7 @@ func (s authService) ForgetPinCode(req *struct {
 
 	//generate send email
 
-	hashedPin, err := s.Encryption.Encrypt(req.PinCode)
+	hashedPin, err := s.Encryption.HashPassword(req.PinCode)
 
 	log.Printf("Pin Code: %s", req.PinCode)
 	log.Printf("Pin Code: %s", hashedPin)
@@ -613,9 +602,6 @@ func (s authService) ForgetPinCode(req *struct {
 			Error:   err.Error(),
 		}
 	}
-
-	aasd, err := s.Encryption.Decrypt(hashedPin)
-	log.Printf("Pin Code: %s", aasd)
 
 	user.PinCode = hashedPin
 	user.PinLastUpdated = time.Now()
