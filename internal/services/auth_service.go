@@ -8,6 +8,7 @@ import (
 	"authentication/internal/utils"
 	"authentication/package/response"
 	"github.com/google/uuid"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -33,6 +34,10 @@ type AuthService interface {
 		NewPassword string `json:"new_password" binding:"required"`
 	}, clientID string) response.ErrorResponse
 	ResetPinAttempts()
+	ForgetPinCode(req *struct {
+		Email   string `json:"email" binding:"required"`
+		PinCode string `json:"pin_code" binding:"required"`
+	}, clientID string) response.ErrorResponse
 }
 
 type authService struct {
@@ -292,6 +297,15 @@ func (s authService) VerifyPinCode(req *struct {
 		}
 	}
 
+	user, err := s.UserRepository.GetUserByClientID(data.ClientID)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User not found",
+			Error:   err.Error(),
+		}
+	}
+
 	hashPin, err := s.Encryption.Encrypt(req.PinCode)
 	if err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
@@ -300,8 +314,9 @@ func (s authService) VerifyPinCode(req *struct {
 			Error:   err.Error(),
 		}
 	}
-
-	user, err := s.UserRepository.GetUserByPinCodeAndClientID(hashPin, data.ClientID)
+	log.Printf("Pin Code: %s", req.PinCode)
+	log.Printf("Pin Code: %s", hashPin)
+	user, err = s.UserRepository.GetUserByPinCodeAndClientID(hashPin, data.ClientID)
 	if err != nil || user.UserID == 0 {
 		if updateErr := s.UserRepository.UpdatePinAttempts(data.ClientID); updateErr != nil {
 			return out.RegisterResponse{}, response.ErrorResponse{
@@ -358,16 +373,25 @@ func (s authService) ChangePinCode(req *struct {
 		}
 	}
 
-	hashedOldPin, err := utils.HashPassword(req.OldPinCode)
-	if err := utils.CheckPassword(user.PinCode, hashedOldPin); err != nil {
+	hashedOldPin, err := s.Encryption.Encrypt(req.OldPinCode)
+	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusBadRequest,
-			Message: "Old Pin Code is incorrect",
+			Message: "Invalid Pin Code",
 			Error:   err.Error(),
 		}
 	}
 
-	hashedNewPin, err := utils.HashPassword(req.NewPinCode)
+	user, err = s.UserRepository.GetUserByPinCodeAndClientID(hashedOldPin, data.ClientID)
+	if err != nil || user.UserID == 0 {
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Pin Code",
+			Error:   "Invalid Pin Code",
+		}
+	}
+
+	hashedNewPin, err := s.Encryption.Encrypt(req.NewPinCode)
 	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -544,4 +568,69 @@ func (s authService) ResetPinAttempts() {
 			}
 		}(user)
 	}
+}
+
+func (s authService) ForgetPinCode(req *struct {
+	Email   string `json:"email" binding:"required"`
+	PinCode string `json:"pin_code" binding:"required"`
+}, clientID string) response.ErrorResponse {
+	user, err := s.UserRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User not found",
+			Error:   err.Error(),
+		}
+	}
+
+	if err := utils.ValidateEmail(req.Email); err != nil {
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Email is invalid",
+			Error:   err.Error(),
+		}
+	}
+
+	user, err = s.UserRepository.GetUserByEmail(req.Email)
+	if err != nil {
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Email not found",
+			Error:   err.Error(),
+		}
+	}
+
+	//generate send email
+
+	hashedPin, err := s.Encryption.Encrypt(req.PinCode)
+
+	log.Printf("Pin Code: %s", req.PinCode)
+	log.Printf("Pin Code: %s", hashedPin)
+	if err != nil {
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Pin Code",
+			Error:   err.Error(),
+		}
+	}
+
+	aasd, err := s.Encryption.Decrypt(hashedPin)
+	log.Printf("Pin Code: %s", aasd)
+
+	user.PinCode = hashedPin
+	user.PinLastUpdated = time.Now()
+	user.PinAttempts = 0
+	user.UpdatedBy = user.ClientID
+	err = s.UserRepository.UpdateProfile(user)
+	if err != nil {
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Failed to update pin code",
+			Error:   err.Error(),
+		}
+	}
+
+	_ = s.RedisService.SaveData(utils.User, user.ClientID, user)
+
+	return response.ErrorResponse{}
 }

@@ -16,6 +16,7 @@ type AuthController interface {
 	Login(c *gin.Context)
 	VerifyPinCode(c *gin.Context)
 	ChangePinCode(c *gin.Context)
+	ForgetPinCode(c *gin.Context)
 	RegisterInternalToken(c *gin.Context)
 	UpdateRole(ctx *gin.Context)
 	GetListUser(ctx *gin.Context)
@@ -153,6 +154,33 @@ func (h authController) ChangePinCode(c *gin.Context) {
 	}
 
 	handleSuccessResponse(c, http.StatusOK, "Pin changed successfully", nil)
+}
+
+func (h authController) ForgetPinCode(c *gin.Context) {
+	var errs = response.ErrorResponse{}
+	var req struct {
+		Email   string `json:"email" binding:"required"`
+		PinCode string `json:"pin_code" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+
+	token, exist := utils.ExtractTokenClaims(c)
+	if !exist {
+		response.SendResponse(c, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	errs = h.AuthService.ForgetPinCode(&req, token.ClientID)
+	if errs.Message != "" {
+		handleErrorResponse(c, errs.Code, errs.Message, nil)
+		return
+	}
+
+	handleSuccessResponse(c, http.StatusOK, "Pin reset successfully", nil)
 }
 
 func (h authController) RegisterInternalToken(c *gin.Context) {

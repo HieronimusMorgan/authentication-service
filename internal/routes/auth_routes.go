@@ -19,7 +19,8 @@ func AuthRoutes(r *gin.Engine, middleware config.Middleware, authController cont
 		protected.POST("/verify-pin", authController.VerifyPinCode)
 		protected.POST("/change-password", authController.ChangePassword)
 		protected.POST("/change-pin", authController.ChangePinCode)
-		public.GET("/logout", authController.Logout)
+		protected.POST("/forget-pin", authController.ForgetPinCode)
+		protected.GET("/logout", authController.Logout)
 	}
 
 	admin := r.Group("/v1")

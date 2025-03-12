@@ -3,13 +3,11 @@ package utils
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"golang.org/x/crypto/bcrypt"
-	"io"
 )
 
 // Encryption interface defines the methods for encryption, decryption, and hashing
@@ -37,28 +35,24 @@ func NewEncryption(key string, iv string) Encryption {
 	}
 }
 
-// Encrypt encrypts text using AES-256 with CFB mode
+// Encrypt encrypts text using AES-256 with a fixed IV (Deterministic)
 func (a *encryption) Encrypt(text string) (string, error) {
 	block, err := aes.NewCipher(a.key)
 	if err != nil {
 		return "", errors.New("failed to create AES cipher: " + err.Error())
 	}
 
-	cipherText := make([]byte, aes.BlockSize+len(text))
-	iv := cipherText[:aes.BlockSize] // Use the first block for IV
+	cipherText := make([]byte, len(text))
 
-	_, err = io.ReadFull(rand.Reader, iv) // Generate a random IV for better security
-	if err != nil {
-		return "", errors.New("failed to generate IV: " + err.Error())
-	}
+	// Use fixed IV for deterministic encryption
+	stream := cipher.NewCFBEncrypter(block, a.iv)
+	stream.XORKeyStream(cipherText, []byte(text))
 
-	stream := cipher.NewCFBEncrypter(block, iv)
-	stream.XORKeyStream(cipherText[aes.BlockSize:], []byte(text))
-
+	// Encode as Base64 for safe storage
 	return base64.StdEncoding.EncodeToString(cipherText), nil
 }
 
-// Decrypt decrypts an AES-256 encrypted string
+// Decrypt decrypts an AES-256 encrypted string using the fixed IV
 func (a *encryption) Decrypt(encryptedText string) (string, error) {
 	cipherText, err := base64.StdEncoding.DecodeString(encryptedText)
 	if err != nil {
@@ -70,14 +64,8 @@ func (a *encryption) Decrypt(encryptedText string) (string, error) {
 		return "", errors.New("failed to create AES cipher: " + err.Error())
 	}
 
-	if len(cipherText) < aes.BlockSize {
-		return "", errors.New("ciphertext too short")
-	}
-
-	iv := cipherText[:aes.BlockSize] // Extract IV from the encrypted text
-	cipherText = cipherText[aes.BlockSize:]
-
-	stream := cipher.NewCFBDecrypter(block, iv)
+	// Use the same fixed IV to decrypt
+	stream := cipher.NewCFBDecrypter(block, a.iv)
 	stream.XORKeyStream(cipherText, cipherText)
 
 	return string(cipherText), nil
