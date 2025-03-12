@@ -47,8 +47,35 @@ func (a authMiddleware) Handler() gin.HandlerFunc {
 			return
 		}
 
+		if tokenClaims.Authorized == false {
+			response.SendResponse(c, http.StatusUnauthorized, "Unauthorized", nil, "You are not authorized to access this resource")
+			c.Abort()
+			return
+		}
+
+		if tokenClaims.Exp < utils.GetCurrentTime() {
+			response.SendResponse(c, http.StatusUnauthorized, "Unauthorized", nil, "Token has expired")
+			c.Abort()
+			return
+		}
+
+		if !hasAuthResource(tokenClaims.Resource) {
+			response.SendResponse(c, http.StatusUnauthorized, "Unauthorized", nil, "You do not have access to this resource")
+			c.Abort()
+			return
+		}
+
 		c.Set("token", tokenClaims)
 
 		c.Next()
 	}
+}
+
+func hasAuthResource(t []string) bool {
+	for _, res := range t {
+		if res == "auth" {
+			return true
+		}
+	}
+	return false
 }

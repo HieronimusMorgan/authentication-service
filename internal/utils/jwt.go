@@ -217,3 +217,7 @@ func ExtractTokenClaims(c *gin.Context) (*TokenClaims, bool) {
 
 	return tokenClaims, true
 }
+
+func GetCurrentTime() int64 {
+	return time.Now().Unix()
+}
