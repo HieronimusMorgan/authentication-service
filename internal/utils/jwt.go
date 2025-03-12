@@ -14,7 +14,7 @@ import (
 )
 
 type JWTService interface {
-	GenerateToken(user models.Users) (models.TokenDetails, error)
+	GenerateToken(user models.Users, resource []string) (models.TokenDetails, error)
 	ValidateToken(tokenString string) (*jwt.MapClaims, error)
 	ValidateTokenAdmin(tokenString string) (*jwt.MapClaims, error)
 	ExtractClaims(tokenString string) (*TokenClaims, error)
@@ -36,7 +36,7 @@ func NewJWTService(jwtSecret string) JWTService {
 }
 
 // GenerateToken generates a new JWT token
-func (j jwtService) GenerateToken(user models.Users) (models.TokenDetails, error) {
+func (j jwtService) GenerateToken(user models.Users, resource []string) (models.TokenDetails, error) {
 	td := &models.TokenDetails{
 		AtExpires:   time.Now().Add(time.Hour * 24).Unix(),
 		AccessUUID:  uuid.New().String(),
@@ -50,6 +50,7 @@ func (j jwtService) GenerateToken(user models.Users) (models.TokenDetails, error
 		"user_id":     user.UserID,
 		"client_id":   user.ClientID,
 		"role_id":     user.RoleID,
+		"resource":    resource,
 		"role":        user.Role.Name,
 		"exp":         td.AtExpires,
 	}
@@ -185,12 +186,13 @@ func (j jwtService) ValidateInternalToken(tokenString string) (*InternalClaims, 
 
 // TokenClaims represents the claims extracted from a JWT token
 type TokenClaims struct {
-	Authorized bool   `json:"authorized"`
-	AccessUUID string `json:"access_uuid"`
-	UserID     uint   `json:"user_id"`
-	ClientID   string `json:"client_id"`
-	RoleID     uint   `json:"role_id"`
-	Exp        int64  `json:"exp"`
+	Authorized bool     `json:"authorized"`
+	AccessUUID string   `json:"access_uuid"`
+	UserID     uint     `json:"user_id"`
+	ClientID   string   `json:"client_id"`
+	RoleID     uint     `json:"role_id"`
+	Resource   []string `json:"resource"`
+	Exp        int64    `json:"exp"`
 }
 
 // InternalClaims represents the claims used for service-to-service authentication

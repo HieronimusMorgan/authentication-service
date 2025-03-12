@@ -16,6 +16,7 @@ type UserRepository interface {
 	GetAllUsers() (*[]models.Users, error)
 	GetUsers() (*[]models.Users, error)
 	GetUserByRole(role uint) (*[]models.Users, error)
+	GetUserByPhoneNumber(number string) (*models.Users, error)
 	GetUserByClientID(clientID string) (*models.Users, error)
 	GetUserByPinCodeAndClientID(pinCode, clientID string) (*models.Users, error)
 	GetUserByClientAndRole(clientID, roleID uint) (*[]models.Users, error)
@@ -104,6 +105,15 @@ func (r userRepository) GetUsers() (*[]models.Users, error) {
 		return nil, err
 	}
 	return &users, nil
+}
+
+func (r userRepository) GetUserByPhoneNumber(number string) (*models.Users, error) {
+	var user models.Users
+	err := r.db.Where("phone_number = ?", number).Find(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (r userRepository) GetUserByRole(role uint) (*[]models.Users, error) {

@@ -17,6 +17,7 @@ import (
 type AuthService interface {
 	Register(req *in.RegisterRequest) (out.RegisterResponse, response.ErrorResponse)
 	Login(req *in.LoginRequest) (interface{}, response.ErrorResponse)
+	LoginPhoneNumber(req *in.LoginPhoneNumber) (interface{}, response.ErrorResponse)
 	VerifyPinCode(req *struct {
 		PinCode string `json:"pin_code" binding:"required"`
 	}, clientID string) (interface{}, response.ErrorResponse)
@@ -205,8 +206,22 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		}
 	}
 
+	resource, err := s.ResourceRepository.GetResourceByUserID(user.UserID)
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Unable to get resource",
+			Error:   err.Error(),
+		}
+	}
+
+	var resourceName []string
+	for _, res := range *resource {
+		resourceName = append(resourceName, res.Name)
+	}
+
 	user.Role = *role
-	token, err := s.JWTService.GenerateToken(*user)
+	token, err := s.JWTService.GenerateToken(*user, resourceName)
 	if err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -252,7 +267,108 @@ func (s authService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
 	user.Role = *role
 
-	token, err := s.JWTService.GenerateToken(*user)
+	resource, err := s.ResourceRepository.GetResourceByUserID(user.UserID)
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Unable to get resource",
+			Error:   err.Error(),
+		}
+	}
+
+	var resourceName []string
+	for _, res := range *resource {
+		resourceName = append(resourceName, res.Name)
+	}
+
+	log.Printf("Resource Name: %v", resourceName)
+
+	token, err := s.JWTService.GenerateToken(*user, resourceName)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User or Password is incorrect",
+			Error:   err.Error(),
+		}
+	}
+
+	_ = s.RedisService.SaveData(utils.Token, user.ClientID, token)
+	_ = s.RedisService.SaveData(utils.User, user.ClientID, user)
+
+	var phoneNumber string
+	decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
+	if err != nil {
+		phoneNumber = user.PhoneNumber
+	} else {
+		phoneNumber = decrypt
+	}
+
+	responses := out.LoginResponse{
+		UserID:         user.UserID,
+		Username:       user.Username,
+		FirstName:      user.FirstName,
+		LastName:       user.LastName,
+		PhoneNumber:    phoneNumber,
+		ProfilePicture: user.ProfilePicture,
+		Token:          token.AccessToken,
+		RefreshToken:   token.RefreshToken,
+	}
+	return responses, response.ErrorResponse{}
+}
+
+func (s authService) LoginPhoneNumber(req *in.LoginPhoneNumber) (interface{}, response.ErrorResponse) {
+	hashPhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Phone Number is invalid",
+			Error:   err.Error(),
+		}
+	}
+
+	user, err := s.UserRepository.GetUserByPhoneNumber(hashPhoneNumber)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Phone Number or Pin Code is incorrect",
+			Error:   err.Error(),
+		}
+	}
+
+	err = s.Encryption.CheckPassword(user.PinCode, req.PinCode)
+	if err != nil {
+		if updateErr := s.UserRepository.UpdatePinAttempts(user.ClientID); updateErr != nil {
+			return out.RegisterResponse{}, response.ErrorResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid User",
+				Error:   updateErr.Error(),
+			}
+		}
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Pin Code",
+			Error:   err.Error(),
+		}
+	}
+
+	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
+	user.Role = *role
+
+	resource, err := s.ResourceRepository.GetResourceByUserID(user.UserID)
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Unable to get resource",
+			Error:   err.Error(),
+		}
+	}
+
+	var resourceName []string
+	for _, res := range *resource {
+		resourceName = append(resourceName, res.Name)
+	}
+
+	token, err := s.JWTService.GenerateToken(*user, resourceName)
 	if err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,

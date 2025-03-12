@@ -8,6 +8,7 @@ import (
 type ResourceRepository interface {
 	AddResource(resource *models.Resource) error
 	GetResourceByID(resourceID uint) (*models.Resource, error)
+	GetResourceByUserID(userID uint) (*[]models.Resource, error)
 	DeleteResourceById(resourceID uint) error
 	DeleteResource(resource *models.Resource) error
 	UpdateResource(resource *models.Resource) error
@@ -41,6 +42,29 @@ func (r resourceRepository) GetResourceByID(resourceID uint) (*models.Resource, 
 		return nil, err
 	}
 	return &resource, nil
+}
+
+func (r resourceRepository) GetResourceByUserID(userID uint) (*[]models.Resource, error) {
+	var resources []models.Resource
+	query := `
+		SELECT res.*
+		FROM "authentication"."resources" res
+		WHERE EXISTS (
+			SELECT 1
+			FROM "authentication"."role_resources" rr
+			JOIN "authentication"."user_roles" ur 
+				ON rr.role_id = ur.role_id
+			WHERE ur.user_id = ? 
+				AND rr.resource_id = res.resource_id
+		);
+	`
+
+	err := r.db.Raw(query, userID).Scan(&resources).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &resources, nil
 }
 
 func (r resourceRepository) DeleteResourceById(resourceID uint) error {

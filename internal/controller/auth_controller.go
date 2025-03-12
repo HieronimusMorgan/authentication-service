@@ -14,6 +14,7 @@ import (
 type AuthController interface {
 	Register(c *gin.Context)
 	Login(c *gin.Context)
+	LoginPhoneNumber(c *gin.Context)
 	VerifyPinCode(c *gin.Context)
 	ChangePinCode(c *gin.Context)
 	ForgetPinCode(c *gin.Context)
@@ -87,6 +88,38 @@ func (h authController) Login(c *gin.Context) {
 	}
 
 	user, errs := h.AuthService.Login(&req)
+	if errs.Message != "" {
+		handleErrorResponse(c, errs.Code, errs.Message, nil)
+		return
+	}
+
+	err := h.UserSession.AddUserSession(user.(out.LoginResponse).UserID, user.(out.LoginResponse).Token,
+		user.(out.LoginResponse).RefreshToken, c.ClientIP(), deviceID)
+
+	if err != nil {
+		handleErrorResponse(c, http.StatusInternalServerError, "Failed to create user session", err)
+		return
+	}
+
+	handleSuccessResponse(c, http.StatusOK, "Login successful", user)
+}
+
+func (h authController) LoginPhoneNumber(c *gin.Context) {
+	var errs = response.ErrorResponse{}
+	var req in.LoginPhoneNumber
+	var deviceID = c.GetHeader("Device-ID")
+
+	if deviceID != "WEB" && deviceID != "MOBILE" {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-ID", nil)
+		return
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+
+	user, errs := h.AuthService.LoginPhoneNumber(&req)
 	if errs.Message != "" {
 		handleErrorResponse(c, errs.Code, errs.Message, nil)
 		return

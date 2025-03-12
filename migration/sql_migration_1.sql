@@ -151,10 +151,11 @@ VALUES ('Super Admin', 'Super Administrator with highest privileges', CURRENT_TI
        ('User', 'Regular user with limited access', CURRENT_TIMESTAMP, 'system');
 
 INSERT INTO resources (name, description, created_at, created_by)
-VALUES ('New Resource', 'Description of the new resource', CURRENT_TIMESTAMP, 'system'),
-       ('System Management', 'Operations for managing the entire system', CURRENT_TIMESTAMP, 'system'),
-       ('Auth', 'Authentication-related operations', CURRENT_TIMESTAMP, 'system'),
-       ('Master', 'Master data management operations', CURRENT_TIMESTAMP, 'system');
+VALUES ('resource', 'Description of the resource', CURRENT_TIMESTAMP, 'system'),
+       ('system', 'Operations for managing the system', CURRENT_TIMESTAMP, 'system'),
+       ('auth', 'Authentication-related operations', CURRENT_TIMESTAMP, 'system'),
+       ('master', 'Master data management operations', CURRENT_TIMESTAMP, 'system'),
+       ('asset', 'Asset management operations', CURRENT_TIMESTAMP, 'system');
 
 INSERT INTO role_resources (role_id, resource_id, created_at, created_by)
 SELECT (SELECT role_id FROM roles WHERE name = 'Super Admin') AS role_id,
@@ -165,15 +166,19 @@ FROM resources;
 
 INSERT INTO role_resources (role_id, resource_id, created_at, created_by)
 VALUES ((SELECT role_id FROM roles WHERE name = 'Admin'),
-        (SELECT resource_id FROM resources WHERE name = 'New Resource'),
+        (SELECT resource_id FROM resources WHERE name = 'resource'),
         CURRENT_TIMESTAMP, 'system'),
-       ((SELECT role_id FROM roles WHERE name = 'Admin'), (SELECT resource_id FROM resources WHERE name = 'Auth'),
+       ((SELECT role_id FROM roles WHERE name = 'Admin'), (SELECT resource_id FROM resources WHERE name = 'auth'),
         CURRENT_TIMESTAMP, 'system'),
-       ((SELECT role_id FROM roles WHERE name = 'Admin'), (SELECT resource_id FROM resources WHERE name = 'Master'),
+       ((SELECT role_id FROM roles WHERE name = 'Admin'), (SELECT resource_id FROM resources WHERE name = 'master'),
+        CURRENT_TIMESTAMP, 'system'),
+       ((SELECT role_id FROM roles WHERE name = 'Admin'), (SELECT resource_id FROM resources WHERE name = 'asset'),
         CURRENT_TIMESTAMP, 'system');
 
 INSERT INTO role_resources (role_id, resource_id, created_at, created_by)
-VALUES ((SELECT role_id FROM roles WHERE name = 'User'), (SELECT resource_id FROM resources WHERE name = 'Auth'),
+VALUES ((SELECT role_id FROM roles WHERE name = 'User'), (SELECT resource_id FROM resources WHERE name = 'auth'),
+        CURRENT_TIMESTAMP, 'system'),
+       ((SELECT role_id FROM roles WHERE name = 'User'), (SELECT resource_id FROM resources WHERE name = 'asset'),
         CURRENT_TIMESTAMP, 'system');
 
 INSERT INTO users (client_id, username, password, first_name, last_name, full_name, phone_number, email,
