@@ -9,3 +9,9 @@ type UserResponse struct {
 	PhoneNumber    string `gorm:"unique" json:"phone_number"`
 	ProfilePicture string `json:"profile_picture"`
 }
+
+type VerifyPinCodeResponse struct {
+	ClientID  string `json:"client_id"`
+	RequestID string `json:"request_id"`
+	Valid     bool   `json:"valid"`
+}

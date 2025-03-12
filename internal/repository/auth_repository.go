@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"authentication/internal/dto/out"
 	"authentication/internal/models"
 	"encoding/json"
 	"errors"
@@ -11,14 +10,9 @@ import (
 )
 
 type AuthRepository interface {
-	CreateUser(user *models.Users) error
-	GetUserByUsername(username string) (*models.Users, error)
-	GetUserByClientID(clientID string) (*models.Users, error)
-	GetUserResponseByClientID(clientID string) (*out.UserResponse, error)
 	AssignUserResource(userID uint, resourceID uint) (*AssignResource, error)
 	AssignUserResourceByName(userID uint, resourceName string) (*AssignResource, error)
-	UpdateProfile(user *models.Users) error
-	GetUserByEmail(email string) (interface{}, error)
+	UpdatePinCode(user *models.Users) error
 }
 
 type authRepository struct {
@@ -28,28 +22,6 @@ type authRepository struct {
 // NewAuthRepository creates a new repository instance
 func NewAuthRepository(db gorm.DB) AuthRepository {
 	return &authRepository{db: db}
-}
-
-func (r authRepository) CreateUser(user *models.Users) error {
-	return r.db.Create(user).Error
-}
-
-func (r authRepository) GetUserByUsername(username string) (*models.Users, error) {
-	var user models.Users
-	err := r.db.Preload("Role").Where("username = ?", username).First(&user).Error
-	return &user, err
-}
-
-func (r authRepository) GetUserByClientID(clientID string) (*models.Users, error) {
-	var user models.Users
-	err := r.db.Table("authentication.users").Where("client_id = ?", clientID).First(&user).Error
-	return &user, err
-}
-
-func (r authRepository) GetUserResponseByClientID(clientID string) (*out.UserResponse, error) {
-	var user out.UserResponse
-	err := r.db.Table("authentication.users").Where("client_id = ?", clientID).First(&user).Error
-	return &user, err
 }
 
 func (r authRepository) AssignUserResource(userID uint, resourceID uint) (*AssignResource, error) {
@@ -176,14 +148,8 @@ func (r authRepository) AssignUserResourceByName(userID uint, resourceName strin
 	}, nil
 }
 
-func (r authRepository) UpdateProfile(user *models.Users) error {
+func (r authRepository) UpdatePinCode(user *models.Users) error {
 	return r.db.Save(user).Error
-}
-
-func (r authRepository) GetUserByEmail(email string) (interface{}, error) {
-	var user models.Users
-	err := r.db.Table("authentication.users").Where("email = ?", email).First(&user).Error
-	return &user, err
 }
 
 type AssignResource struct {

@@ -57,7 +57,7 @@ func (s usersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 
 	session, err := s.UserSessionRepository.GetUserSessionByUserID(userID)
 	if err != nil || session == nil {
-		s.UserSessionRepository.AddUserSession(userSession)
+		_ = s.UserSessionRepository.AddUserSession(userSession)
 		return nil
 	}
 

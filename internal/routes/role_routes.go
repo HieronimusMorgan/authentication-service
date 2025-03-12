@@ -1,20 +1,20 @@
 package routes
 
 import (
+	"authentication/config"
 	"authentication/internal/controller"
 	"github.com/gin-gonic/gin"
 )
 
-func RoleRoutes(r *gin.Engine, roleHandler controller.RoleController) {
-
+func RoleRoutes(r *gin.Engine, middleware config.Middleware, roleController controller.RoleController) {
 	protected := r.Group("/v1/role")
-	//protected.Use(middleware.AuthMiddleware(roleService))
+	protected.Use(middleware.AdminMiddleware.Handler())
 	{
-		protected.POST("/add", roleHandler.AddRole)
-		protected.PUT("/update/:id", roleHandler.UpdateRole)
-		protected.GET("", roleHandler.GetListRole)
-		protected.GET("/users", roleHandler.GetListRoleUsers)
-		protected.GET("/:id", roleHandler.GetRoleById)
-		protected.DELETE("/:id", roleHandler.DeleteRoleById)
+		protected.POST("/add", roleController.AddRole)
+		protected.PUT("/update/:id", roleController.UpdateRole)
+		protected.GET("", roleController.GetListRole)
+		protected.GET("/users", roleController.GetListRoleUsers)
+		protected.GET("/:id", roleController.GetRoleById)
+		protected.DELETE("/:id", roleController.DeleteRoleById)
 	}
 }

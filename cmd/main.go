@@ -25,9 +25,10 @@ func main() {
 	engine := serverConfig.Gin
 
 	// Register routes
-	routes.ResourceRoutes(engine, serverConfig.Controller.ResourceController)
+	routes.ResourceRoutes(engine, serverConfig.Middleware, serverConfig.Controller.ResourceController)
 	routes.AuthRoutes(engine, serverConfig.Middleware, serverConfig.Controller.AuthController)
-	routes.RoleRoutes(engine, serverConfig.Controller.RoleController)
+	routes.RoleRoutes(engine, serverConfig.Middleware, serverConfig.Controller.RoleController)
+	routes.UserRoutes(engine, serverConfig.Middleware, serverConfig.Controller.UserController)
 
 	// Run server
 	log.Println("Starting server on :8080")

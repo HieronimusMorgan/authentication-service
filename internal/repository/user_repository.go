@@ -1,12 +1,14 @@
 package repository
 
 import (
+	"authentication/internal/dto/out"
 	"authentication/internal/models"
 	"gorm.io/gorm"
 )
 
 type UserRepository interface {
 	RegisterUser(user **models.Users) error
+	GetUserByUsername(username string) (*models.Users, error)
 	GetUserByEmail(email string) (*models.Users, error)
 	GetUserByID(id uint) (*models.Users, error)
 	UpdateUser(user **models.Users) error
@@ -15,13 +17,17 @@ type UserRepository interface {
 	GetUsers() (*[]models.Users, error)
 	GetUserByRole(role uint) (*[]models.Users, error)
 	GetUserByClientID(clientID string) (*models.Users, error)
+	GetUserByPinCodeAndClientID(pinCode, clientID string) (*models.Users, error)
 	GetUserByClientAndRole(clientID, roleID uint) (*[]models.Users, error)
+	GetUserResponseByClientID(clientID string) (*out.UserResponse, error)
 	DeleteUserByID(id uint) error
 	UpdateRole(user *models.Users) error
 	GetListUser() (*[]models.Users, error)
 	GetUserByResourceID(resourceID uint) (*[]models.Users, error)
 	ChangePassword(user *models.Users) error
-	UpdatePinAttempts(user models.Users) error
+	UpdatePinAttempts(clientID string) error
+	ResetPinAttempts(user *models.Users) error
+	UpdateProfile(user *models.Users) error
 }
 
 type userRepository struct {
@@ -38,6 +44,12 @@ func (r userRepository) RegisterUser(user **models.Users) error {
 		return err
 	}
 	return nil
+}
+
+func (r userRepository) GetUserByUsername(username string) (*models.Users, error) {
+	var user models.Users
+	err := r.db.Preload("Role").Where("username = ?", username).First(&user).Error
+	return &user, err
 }
 
 func (r userRepository) GetUserByEmail(email string) (*models.Users, error) {
@@ -112,6 +124,15 @@ func (r userRepository) GetUserByClientID(clientID string) (*models.Users, error
 	return &users, nil
 }
 
+func (r userRepository) GetUserByPinCodeAndClientID(pinCode, clientID string) (*models.Users, error) {
+	var user models.Users
+	err := r.db.Where("pin_code = ? AND client_id = ?", pinCode, clientID).Find(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r userRepository) GetUserByClientAndRole(clientID, roleID uint) (*[]models.Users, error) {
 	var users []models.Users
 	err := r.db.Where("client_id = ? AND role_id = ?", clientID, roleID).Find(&users).Error
@@ -119,6 +140,12 @@ func (r userRepository) GetUserByClientAndRole(clientID, roleID uint) (*[]models
 		return nil, err
 	}
 	return &users, nil
+}
+
+func (r userRepository) GetUserResponseByClientID(clientID string) (*out.UserResponse, error) {
+	var user out.UserResponse
+	err := r.db.Table("authentication.users").Where("client_id = ?", clientID).First(&user).Error
+	return &user, err
 }
 
 func (r userRepository) DeleteUserByID(id uint) error {
@@ -172,7 +199,18 @@ func (r userRepository) ChangePassword(user *models.Users) error {
 	return nil
 }
 
-func (r userRepository) UpdatePinAttempts(user models.Users) error {
+func (r userRepository) UpdatePinAttempts(clientID string) error {
+	err := r.db.Model(&models.Users{}).
+		Where("client_id = ?", clientID).
+		Update("pin_attempts", gorm.Expr("pin_attempts + 1")).
+		Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r userRepository) ResetPinAttempts(user *models.Users) error {
 	err := r.db.Model(&user).
 		Update("pin_attempts", 0).
 		Error
@@ -180,4 +218,8 @@ func (r userRepository) UpdatePinAttempts(user models.Users) error {
 		return err
 	}
 	return nil
+}
+
+func (r userRepository) UpdateProfile(user *models.Users) error {
+	return r.db.Save(user).Error
 }

@@ -1,8 +1,11 @@
 package utils
 
-const Token = "token"
-const User = "user"
-const UserSession = "user_session"
-const ClientID = "client_id"
-const UserID = "user_id"
-const RoleID = "role_id"
+const (
+	User        = "user"
+	Token       = "token"
+	PinVerify   = "pin_verify"
+	UserSession = "user_session"
+	ClientID    = "client_id"
+	UserID      = "user_id"
+	RoleID      = "role_id"
+)

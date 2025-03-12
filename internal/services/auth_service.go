@@ -7,6 +7,7 @@ import (
 	"authentication/internal/repository"
 	"authentication/internal/utils"
 	"authentication/package/response"
+	"github.com/google/uuid"
 	"net/http"
 	"strings"
 	"time"
@@ -15,14 +16,16 @@ import (
 type AuthService interface {
 	Register(req *in.RegisterRequest) (out.RegisterResponse, response.ErrorResponse)
 	Login(req *in.LoginRequest) (interface{}, response.ErrorResponse)
-	LoginPhoneNumber(req *in.LoginPhoneNumber) (interface{}, response.ErrorResponse)
-	GetProfile(clientID string) (*out.UserResponse, response.ErrorResponse)
-	UpdateNameUserProfile(updateNameRequest *in.UpdateNameRequest, clientID string) (interface{}, error)
-	UpdatePhotoUserProfile(req *in.UpdatePhotoRequest, clientID string) (interface{}, error)
+	VerifyPinCode(req *struct {
+		PinCode string `json:"pin_code" binding:"required"`
+	}, clientID string) (interface{}, response.ErrorResponse)
+	ChangePinCode(s *struct {
+		OldPinCode string `json:"old_pin_code" binding:"required"`
+		NewPinCode string `json:"new_pin_code" binding:"required"`
+	}, clientID string) response.ErrorResponse
 	RegisterInternalToken(req *struct {
 		ResourceName string `json:"resource_name" binding:"required"`
 	}) (interface{}, response.ErrorResponse)
-	DeleteUserById(userID uint, clientID string) response.ErrorResponse
 	UpdateRole(userID uint, roleID uint, clientID string) response.ErrorResponse
 	GetListUser(clientID string) (interface{}, response.ErrorResponse)
 	ChangePassword(password *struct {
@@ -98,7 +101,7 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		}
 	}
 
-	hashedPassword, err := utils.HashPassword(req.Password)
+	hashedPassword, err := s.Encryption.HashPassword(req.Password)
 	if err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -107,11 +110,20 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		}
 	}
 
-	hashedPin, err := utils.HashPassword(req.PinCode)
+	hashedPin, err := s.Encryption.Encrypt(req.PinCode)
 	if err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid Pin Code",
+			Error:   err.Error(),
+		}
+	}
+
+	hashPhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Phone Number",
 			Error:   err.Error(),
 		}
 	}
@@ -128,15 +140,7 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 	firstName := utils.ValidationTrimSpace(req.FirstName)
 	lastName := utils.ValidationTrimSpace(req.LastName)
 	fullName := firstName + " " + lastName
-	asePhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
-	if err != nil {
-		return out.RegisterResponse{}, response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Phone number is invalid",
-			Error:   err.Error(),
-		}
-	}
-	//check format email
+
 	if err := utils.ValidateEmail(req.Email); err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -146,12 +150,12 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 	}
 
 	//check email is exist
-	_, err = s.AuthRepository.GetUserByEmail(req.Email)
+	_, err = s.UserRepository.GetUserByEmail(req.Email)
 	if err == nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Email already exist",
-			Error:   err.Error(),
+			Error:   error(nil).Error(),
 		}
 	}
 
@@ -166,7 +170,7 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		LastName:       lastName,
 		FullName:       fullName,
 		Email:          req.Email,
-		PhoneNumber:    asePhoneNumber,
+		PhoneNumber:    hashPhoneNumber,
 		ProfilePicture: req.ProfilePicture,
 		RoleID:         role.RoleID,
 		CreatedBy:      "system",
@@ -224,7 +228,7 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 }
 
 func (s authService) Login(req *in.LoginRequest) (interface{}, response.ErrorResponse) {
-	user, err := s.AuthRepository.GetUserByUsername(req.Username)
+	user, err := s.UserRepository.GetUserByUsername(req.Username)
 	if err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -252,8 +256,8 @@ func (s authService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 		}
 	}
 
-	_ = s.RedisService.SaveData("token", user.ClientID, token)
-	_ = s.RedisService.SaveData("user", user.ClientID, user)
+	_ = s.RedisService.SaveData(utils.Token, user.ClientID, token)
+	_ = s.RedisService.SaveData(utils.User, user.ClientID, user)
 
 	var phoneNumber string
 	decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
@@ -276,64 +280,10 @@ func (s authService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 	return responses, response.ErrorResponse{}
 }
 
-// TODO : Implement LoginPhoneNumber Not FINISHED
-func (s authService) LoginPhoneNumber(req *in.LoginPhoneNumber) (interface{}, response.ErrorResponse) {
-	//user, err := s.AuthRepository.GetUserByPhoneNumber(req.PhoneNumber)
-	//if err != nil {
-	//	return nil, response.ErrorResponse{
-	//		Code:    http.StatusBadRequest,
-	//		Message: "Phone number or Pin Code is incorrect",
-	//		Error:   err.Error(),
-	//	}
-	//}
-	//
-	//if err := utils.CheckPassword(user.PinCode, req.PinCode); err != nil {
-	//	return nil, response.ErrorResponse{
-	//		Code:    http.StatusBadRequest,
-	//		Message: "Phone number or Pin Code is incorrect",
-	//		Error:   err.Error(),
-	//	}
-	//}
-	//
-	//role, err := s.RoleRepository.GetRoleByID(user.RoleID)
-	//user.Role = *role
-	//
-	//token, err := s.JWTService.GenerateToken(*user)
-	//if err != nil {
-	//	return nil, response.ErrorResponse{
-	//		Code:    http.StatusBadRequest,
-	//		Message: "Phone number or Pin Code is incorrect",
-	//		Error:   err.Error(),
-	//	}
-	//}
-	//
-	//_ = s.RedisService.SaveData("token", user.ClientID, token)
-	//_ = s.RedisService.SaveData("user", user.ClientID, user)
-	//
-	//var phoneNumber string
-	//decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
-	//if err != nil {
-	//	phoneNumber = user.PhoneNumber
-	//} else {
-	//	phoneNumber = decrypt
-	//}
-	//
-	//responses := out.LoginResponse{
-	//	UserID:         user.UserID,
-	//	Username:       user.Username,
-	//	FirstName:      user.FirstName,
-	//	LastName:       user.LastName,
-	//	PhoneNumber:    phoneNumber,
-	//	ProfilePicture: user.ProfilePicture,
-	//	Token:          token.AccessToken,
-	//	RefreshToken:   token.RefreshToken,
-	//}
-	//return responses, response.ErrorResponse{}
-}
-
-func (s authService) GetProfile(clientID string) (*out.UserResponse, response.ErrorResponse) {
-
-	user, err := s.AuthRepository.GetUserResponseByClientID(clientID)
+func (s authService) VerifyPinCode(req *struct {
+	PinCode string `json:"pin_code" binding:"required"`
+}, clientID string) (interface{}, response.ErrorResponse) {
+	data, err := utils.GetUserRedis(s.RedisService, utils.User, clientID)
 	if err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -342,83 +292,104 @@ func (s authService) GetProfile(clientID string) (*out.UserResponse, response.Er
 		}
 	}
 
-	var phoneNumber string
-	decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
+	hashPin, err := s.Encryption.Encrypt(req.PinCode)
 	if err != nil {
-		phoneNumber = user.PhoneNumber
-	} else {
-		phoneNumber = decrypt
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Pin Code",
+			Error:   err.Error(),
+		}
 	}
 
-	user.PhoneNumber = phoneNumber
+	user, err := s.UserRepository.GetUserByPinCodeAndClientID(hashPin, data.ClientID)
+	if err != nil || user.UserID == 0 {
+		if updateErr := s.UserRepository.UpdatePinAttempts(data.ClientID); updateErr != nil {
+			return out.RegisterResponse{}, response.ErrorResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid User",
+				Error:   updateErr.Error(),
+			}
+		}
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Pin Code",
+			Error:   "Invalid Pin Code",
+		}
+	}
 
-	return user, response.ErrorResponse{}
+	var requestID = uuid.New().String()
+	responseModel := out.VerifyPinCodeResponse{
+		ClientID:  user.ClientID,
+		RequestID: requestID,
+		Valid:     true,
+	}
+
+	err = s.RedisService.SaveDataExpired(utils.PinVerify, requestID, 5, responseModel)
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Pin Code",
+			Error:   err.Error(),
+		}
+	}
+
+	return responseModel, response.ErrorResponse{}
 }
 
-func (s authService) UpdateNameUserProfile(updateNameRequest *in.UpdateNameRequest, clientID string) (interface{}, error) {
-	user, err := s.AuthRepository.GetUserByClientID(clientID)
+func (s authService) ChangePinCode(req *struct {
+	OldPinCode string `json:"old_pin_code" binding:"required"`
+	NewPinCode string `json:"new_pin_code" binding:"required"`
+}, clientID string) response.ErrorResponse {
+	data, err := utils.GetUserRedis(s.RedisService, utils.User, clientID)
 	if err != nil {
-		return nil, err
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User not found",
+			Error:   err.Error(),
+		}
 	}
 
-	user.FirstName = utils.ValidationTrimSpace(updateNameRequest.FirstName)
-	user.LastName = utils.ValidationTrimSpace(updateNameRequest.LastName)
-	user.FullName = user.FirstName + " " + user.LastName
-	user.UpdatedBy = user.FullName
-
-	err = s.AuthRepository.UpdateProfile(user)
+	user, err := s.UserRepository.GetUserByClientID(data.ClientID)
 	if err != nil {
-		return nil, err
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User not found",
+			Error:   err.Error(),
+		}
 	}
 
-	var phoneNumber string
-	decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
-	if err != nil {
-		phoneNumber = user.PhoneNumber
-	} else {
-		phoneNumber = decrypt
-	}
-	return out.UserResponse{
-		UserID:         user.UserID,
-		ClientID:       user.ClientID,
-		Username:       user.Username,
-		FirstName:      user.FirstName,
-		LastName:       user.LastName,
-		PhoneNumber:    phoneNumber,
-		ProfilePicture: user.ProfilePicture,
-	}, nil
-}
-
-func (s authService) UpdatePhotoUserProfile(req *in.UpdatePhotoRequest, clientID string) (interface{}, error) {
-	user, err := s.AuthRepository.GetUserByClientID(clientID)
-	if err != nil {
-		return nil, err
+	hashedOldPin, err := utils.HashPassword(req.OldPinCode)
+	if err := utils.CheckPassword(user.PinCode, hashedOldPin); err != nil {
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Old Pin Code is incorrect",
+			Error:   err.Error(),
+		}
 	}
 
-	user.ProfilePicture = req.ProfilePicture
-	user.UpdatedBy = user.FullName
-
-	err = s.AuthRepository.UpdateProfile(user)
+	hashedNewPin, err := utils.HashPassword(req.NewPinCode)
 	if err != nil {
-		return nil, err
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Pin Code",
+			Error:   err.Error(),
+		}
 	}
 
-	var phoneNumber string
-	decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
+	user.PinCode = hashedNewPin
+	user.PinLastUpdated = time.Now()
+	user.PinAttempts = 0
+	user.UpdatedBy = user.ClientID
+
+	err = s.AuthRepository.UpdatePinCode(user)
 	if err != nil {
-		phoneNumber = user.PhoneNumber
-	} else {
-		phoneNumber = decrypt
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Pin Code",
+			Error:   err.Error(),
+		}
 	}
-	return out.UserResponse{
-		UserID:         user.UserID,
-		ClientID:       user.ClientID,
-		Username:       user.Username,
-		FirstName:      user.FirstName,
-		LastName:       user.LastName,
-		PhoneNumber:    phoneNumber,
-		ProfilePicture: user.ProfilePicture,
-	}, nil
+	return response.ErrorResponse{}
 }
 
 func (s authService) RegisterInternalToken(req *struct {
@@ -451,38 +422,6 @@ func (s authService) RegisterInternalToken(req *struct {
 	}
 
 	return token, response.ErrorResponse{}
-}
-
-func (s authService) DeleteUserById(userID uint, clientID string) response.ErrorResponse {
-	admin, err := s.UserRepository.GetUserByClientID(clientID)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "user is not an admin",
-			Error:   err.Error(),
-		}
-	}
-
-	var user *models.Users
-	user, err = s.UserRepository.GetUserByID(userID)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "User not found",
-			Error:   err.Error(),
-		}
-	}
-
-	user.DeletedBy = admin.FullName
-	err = s.UserRepository.DeleteUser(user)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "User ",
-			Error:   err.Error(),
-		}
-	}
-	return response.ErrorResponse{}
 }
 
 func (s authService) UpdateRole(userID uint, roleID uint, clientID string) response.ErrorResponse {
@@ -601,7 +540,7 @@ func (s authService) ResetPinAttempts() {
 		go func(u models.Users) {
 			if u.PinAttempts > 0 {
 				u.PinAttempts = 0
-				_ = s.UserRepository.UpdatePinAttempts(u)
+				_ = s.UserRepository.ResetPinAttempts(&u)
 			}
 		}(user)
 	}

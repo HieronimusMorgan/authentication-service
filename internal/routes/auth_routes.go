@@ -6,28 +6,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AuthRoutes(r *gin.Engine, middleware config.Middleware, authHandler controller.AuthHController) {
-
-	// Public routes: No middleware applied
+func AuthRoutes(r *gin.Engine, middleware config.Middleware, authController controller.AuthController) {
 	public := r.Group("/v1")
 	{
-		public.POST("/register", authHandler.Register)
-		public.POST("/login", authHandler.Login)
+		public.POST("/register", authController.Register)
+		public.POST("/login", authController.Login)
 	}
 
 	protected := r.Group("/v1")
 	protected.Use(middleware.AuthMiddleware.Handler())
 	{
-		protected.GET("/profile", authHandler.GetProfile)
-		protected.POST("/change-password", authHandler.ChangePassword)
-		public.GET("/logout", authHandler.Logout)
+		protected.POST("/verify-pin", authController.VerifyPinCode)
+		protected.POST("/change-password", authController.ChangePassword)
+		protected.POST("/change-pin", authController.ChangePinCode)
+		public.GET("/logout", authController.Logout)
 	}
 
 	admin := r.Group("/v1")
 	admin.Use(middleware.AdminMiddleware.Handler())
 	{
-		admin.GET("/users", authHandler.GetListUser)
-		admin.POST("/user/update-role/:id", authHandler.UpdateRole)
-		admin.DELETE("/user/:id", authHandler.DeleteUser)
+		admin.GET("/users", authController.GetListUser)
+		admin.POST("/user/update-role/:id", authController.UpdateRole)
 	}
 }

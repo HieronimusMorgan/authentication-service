@@ -24,7 +24,6 @@ func NewAuthMiddleware(jwtService utils.JWTService) AuthMiddleware {
 	}
 }
 
-// Handler returns a middleware function for JWT validation
 func (a authMiddleware) Handler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")

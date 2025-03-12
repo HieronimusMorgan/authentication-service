@@ -80,6 +80,7 @@ func (s *ServerConfig) initServices() {
 			s.Redis,
 			s.JWTService,
 			s.Encryption.EncryptionService),
+		UserService:        services.NewUserService(s.Repository.UserRepo, s.Redis, s.JWTService, s.Encryption.EncryptionService),
 		ResourceService:    services.NewResourceService(s.Repository.ResourceRepo, s.Repository.RoleResourceRepo, s.Repository.RoleRepo, s.Repository.UserRepo),
 		RoleService:        services.NewRoleService(s.Repository.RoleRepo, s.Repository.UserRepo),
 		UserSessionService: services.NewUsersSessionService(s.Repository.UserSessionRepo, s.Repository.UserRepo, s.JWTService, s.Redis),
@@ -95,6 +96,7 @@ func (s *ServerConfig) Start() error {
 func (s *ServerConfig) initController() {
 	s.Controller = Controller{
 		AuthController:     controller.NewAuthController(s.Services.AuthService, s.Services.UserSessionService, s.JWTService),
+		UserController:     controller.NewUserController(s.Services.UserService, s.JWTService),
 		ResourceController: controller.NewResourceController(s.Services.ResourceService, s.JWTService),
 		RoleController:     controller.NewRoleController(s.Services.RoleService, s.JWTService),
 	}
@@ -118,6 +120,6 @@ func (s *ServerConfig) initCron() {
 
 func (s *ServerConfig) initAesEncrypt() {
 	s.Encryption = Encryption{
-		EncryptionService: utils.NewEncryption(s.Config.AesEncrypt),
+		EncryptionService: utils.NewEncryption(s.Config.AesEncrypt, s.Config.AesFixedIV),
 	}
 }

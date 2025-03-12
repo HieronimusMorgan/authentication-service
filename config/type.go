@@ -31,6 +31,7 @@ type ServerConfig struct {
 // Services holds all service dependencies
 type Services struct {
 	AuthService        services.AuthService
+	UserService        services.UserService
 	UserSessionService services.UsersSessionService
 	ResourceService    services.ResourceService
 	RoleService        services.RoleService
@@ -48,7 +49,8 @@ type Repository struct {
 }
 
 type Controller struct {
-	AuthController     controller.AuthHController
+	AuthController     controller.AuthController
+	UserController     controller.UserController
 	ResourceController controller.ResourceController
 	RoleController     controller.RoleController
 }
