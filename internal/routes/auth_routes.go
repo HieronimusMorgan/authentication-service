@@ -12,6 +12,9 @@ func AuthRoutes(r *gin.Engine, middleware config.Middleware, authController cont
 		public.POST("/register", authController.Register)
 		public.POST("/login", authController.Login)
 		public.POST("/login-phone", authController.LoginPhoneNumber)
+		public.POST("/change-device", authController.ChangeDeviceID)
+		public.POST("/verify-device", authController.VerifyDeviceID)
+
 	}
 
 	protected := r.Group("/v1")

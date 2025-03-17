@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"authentication/internal/models"
+	"authentication/internal/models/users"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,7 +13,7 @@ import (
 // RedisService defines the contract for Redis operations
 type RedisService interface {
 	SaveData(key string, clientID string, data interface{}) error
-	SaveDataExpired(key string, clientID string, exp int, data interface{}) error
+	SaveDataExpired(key string, clientID string, exp float32, data interface{}) error
 	GetData(key string, clientID string, target interface{}) error
 	DeleteData(key string, clientID string) error
 	GetToken(clientID string) (string, error)
@@ -46,7 +46,7 @@ func (r redisService) SaveData(key string, clientID string, data interface{}) er
 }
 
 // SaveDataExpired stores data in Redis with an expiration time
-func (r redisService) SaveDataExpired(key string, requestID string, exp int, data interface{}) error {
+func (r redisService) SaveDataExpired(key string, requestID string, exp float32, data interface{}) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal data to JSON: %v", err)
@@ -104,8 +104,8 @@ func (r redisService) DeleteToken(clientID string) error {
 	return err
 }
 
-func GetUserRedis(redis RedisService, key string, clientID string) (*models.Users, error) {
-	var u = &models.Users{}
+func GetUserRedis(redis RedisService, key string, clientID string) (*users.Users, error) {
+	var u = &users.Users{}
 	err := redis.GetData(key, clientID, u)
 	if err != nil {
 		return nil, err

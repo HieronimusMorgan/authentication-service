@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"authentication/internal/models"
+	"authentication/internal/models/users"
 	"authentication/package/response"
 	"errors"
 	"fmt"
@@ -14,7 +14,7 @@ import (
 )
 
 type JWTService interface {
-	GenerateToken(user models.Users, resource []string) (models.TokenDetails, error)
+	GenerateToken(user users.Users, resourceName []string, roleName string) (users.TokenDetails, error)
 	ValidateToken(tokenString string) (*jwt.MapClaims, error)
 	ValidateTokenAdmin(tokenString string) (*jwt.MapClaims, error)
 	ExtractClaims(tokenString string) (*TokenClaims, error)
@@ -36,8 +36,8 @@ func NewJWTService(jwtSecret string) JWTService {
 }
 
 // GenerateToken generates a new JWT token
-func (j jwtService) GenerateToken(user models.Users, resource []string) (models.TokenDetails, error) {
-	td := &models.TokenDetails{
+func (j jwtService) GenerateToken(user users.Users, resourceName []string, roleName string) (users.TokenDetails, error) {
+	td := &users.TokenDetails{
 		AtExpires:   time.Now().Add(time.Hour * 24).Unix(),
 		AccessUUID:  uuid.New().String(),
 		RtExpires:   time.Now().Add(time.Hour * 24 * 7).Unix(),
@@ -50,8 +50,8 @@ func (j jwtService) GenerateToken(user models.Users, resource []string) (models.
 		"user_id":     user.UserID,
 		"client_id":   user.ClientID,
 		"role_id":     user.RoleID,
-		"resource":    resource,
-		"role":        user.Role.Name,
+		"resource":    resourceName,
+		"role":        roleName,
 		"exp":         td.AtExpires,
 	}
 
@@ -59,7 +59,7 @@ func (j jwtService) GenerateToken(user models.Users, resource []string) (models.
 	var err error
 	td.AccessToken, err = at.SignedString(j.SecretKey)
 	if err != nil {
-		return models.TokenDetails{}, err
+		return users.TokenDetails{}, err
 	}
 
 	td.RefreshToken = GenerateClientID()
@@ -142,6 +142,12 @@ func (j jwtService) ExtractClaims(tokenString string) (*TokenClaims, error) {
 
 	if role, ok := (*claims)["role_id"].(float64); ok {
 		tc.RoleID = uint(role)
+	}
+
+	if resource, ok := (*claims)["resource"].([]interface{}); ok {
+		for _, r := range resource {
+			tc.Resource = append(tc.Resource, r.(string))
+		}
 	}
 
 	return tc, nil

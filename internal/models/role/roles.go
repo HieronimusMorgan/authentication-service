@@ -1,4 +1,4 @@
-package models
+package role
 
 import (
 	"gorm.io/gorm"

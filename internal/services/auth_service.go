@@ -3,7 +3,7 @@ package services
 import (
 	"authentication/internal/dto/in"
 	"authentication/internal/dto/out"
-	"authentication/internal/models"
+	"authentication/internal/models/users"
 	"authentication/internal/repository"
 	"authentication/internal/utils"
 	"authentication/package/response"
@@ -15,9 +15,17 @@ import (
 )
 
 type AuthService interface {
-	Register(req *in.RegisterRequest) (out.RegisterResponse, response.ErrorResponse)
-	Login(req *in.LoginRequest) (interface{}, response.ErrorResponse)
-	LoginPhoneNumber(req *in.LoginPhoneNumber) (interface{}, response.ErrorResponse)
+	Register(req *in.RegisterRequest, deviceID string) (out.RegisterResponse, response.ErrorResponse)
+	Login(req *in.LoginRequest, deviceID string) (interface{}, response.ErrorResponse)
+	LoginPhoneNumber(req *in.LoginPhoneNumber, deviceID string) (interface{}, response.ErrorResponse)
+	ChangeDeviceID(s *struct {
+		PhoneNumber string `json:"phone_number" binding:"required"`
+		DeviceID    string `json:"device_id" binding:"required"`
+	}) (interface{}, response.ErrorResponse)
+	VerifyDeviceID(req *struct {
+		RequestID string `json:"request_id" binding:"required"`
+		PinCode   string `json:"pin_code" binding:"required"`
+	}) (interface{}, response.ErrorResponse)
 	VerifyPinCode(req *struct {
 		PinCode string `json:"pin_code" binding:"required"`
 	}, clientID string) (interface{}, response.ErrorResponse)
@@ -79,7 +87,7 @@ func NewAuthService(
 	}
 }
 
-func (s authService) checkUserIsAdmin(user *models.Users) response.ErrorResponse {
+func (s authService) checkUserIsAdmin(user *users.Users) response.ErrorResponse {
 	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
 	if err != nil {
 		return response.ErrorResponse{
@@ -98,11 +106,19 @@ func (s authService) checkUserIsAdmin(user *models.Users) response.ErrorResponse
 	return response.ErrorResponse{}
 }
 
-func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, response.ErrorResponse) {
-	if err := utils.ValidateUsername(req.Username); err != nil {
+func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.RegisterResponse, response.ErrorResponse) {
+	//if err := utils.ValidateUsername(req.Username); err != nil {
+	//	return out.RegisterResponse{}, response.ErrorResponse{
+	//		Code:    http.StatusBadRequest,
+	//		Message: "Validation Username",
+	//		Error:   err.Error(),
+	//	}
+	//}
+
+	if err := utils.ValidatePhoneNumber(req.PhoneNumber); err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
-			Message: "Validation Username",
+			Message: "Validation Phone Number",
 			Error:   err.Error(),
 		}
 	}
@@ -122,6 +138,24 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 			Code:    http.StatusBadRequest,
 			Message: "Invalid Pin Code",
 			Error:   err.Error(),
+		}
+	}
+	var hashDeviceID string
+	if deviceID == "MOBILE" {
+		if req.DeviceID == nil {
+			return out.RegisterResponse{}, response.ErrorResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Device ID is required",
+				Error:   "Device ID is required",
+			}
+		}
+		hashDeviceID, err = s.Encryption.Encrypt(*req.DeviceID)
+		if err != nil {
+			return out.RegisterResponse{}, response.ErrorResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid Device ID",
+				Error:   err.Error(),
+			}
 		}
 	}
 
@@ -161,11 +195,20 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Email already exist",
-			Error:   error(nil).Error(),
+			Error:   "Email already exist",
 		}
 	}
 
-	user := &models.Users{
+	phone, err := s.UserRepository.GetUserByPhoneNumber(hashPhoneNumber)
+	if phone != nil && phone.PhoneNumber != "" {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Phone Number already exist",
+			Error:   "Phone Number already exist",
+		}
+	}
+
+	user := &users.Users{
 		ClientID:       utils.GenerateClientID(),
 		Username:       req.Username,
 		Password:       hashedPassword,
@@ -179,8 +222,15 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		PhoneNumber:    hashPhoneNumber,
 		ProfilePicture: req.ProfilePicture,
 		RoleID:         role.RoleID,
-		CreatedBy:      "system",
-		UpdatedBy:      "system",
+		DeviceID: func() *string {
+			if hashDeviceID == "" {
+				return nil
+			} else {
+				return &hashDeviceID
+			}
+		}(),
+		CreatedBy: "system",
+		UpdatedBy: "system",
 	}
 
 	if err := s.UserRepository.RegisterUser(&user); err != nil {
@@ -191,7 +241,7 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		}
 	}
 
-	userRole := &models.UserRole{
+	userRole := &users.UserRole{
 		UserID:    user.UserID,
 		RoleID:    role.RoleID,
 		CreatedBy: "system",
@@ -215,13 +265,21 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		}
 	}
 
+	role, err = s.RoleRepository.GetRoleByID(user.RoleID)
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Unable to get role",
+			Error:   err.Error(),
+		}
+	}
+
 	var resourceName []string
 	for _, res := range *resource {
 		resourceName = append(resourceName, res.Name)
 	}
 
-	user.Role = *role
-	token, err := s.JWTService.GenerateToken(*user, resourceName)
+	token, err := s.JWTService.GenerateToken(*user, resourceName, role.Name)
 	if err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -240,6 +298,8 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
 		PhoneNumber:    phoneNumber,
+		Role:           role.Name,
+		Resource:       resourceName,
 		ProfilePicture: user.ProfilePicture,
 		Token:          token.AccessToken,
 		RefreshToken:   token.RefreshToken,
@@ -247,7 +307,7 @@ func (s authService) Register(req *in.RegisterRequest) (out.RegisterResponse, re
 	return responses, response.ErrorResponse{}
 }
 
-func (s authService) Login(req *in.LoginRequest) (interface{}, response.ErrorResponse) {
+func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, response.ErrorResponse) {
 	user, err := s.UserRepository.GetUserByUsername(req.Username)
 	if err != nil {
 		return nil, response.ErrorResponse{
@@ -264,8 +324,32 @@ func (s authService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 		}
 	}
 
+	if deviceID == "MOBILE" && user.DeviceID != nil {
+		hashDeviceID, err := s.Encryption.Encrypt(req.DeviceID)
+		if err != nil {
+			return nil, response.ErrorResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Device ID is invalid",
+				Error:   err.Error(),
+			}
+		}
+		if !strings.EqualFold(*user.DeviceID, hashDeviceID) {
+			return nil, response.ErrorResponse{
+				Code:    http.StatusPreconditionFailed,
+				Message: "User is logged in another device",
+				Error:   "User is logged in another device",
+			}
+		}
+	}
+
 	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
-	user.Role = *role
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Unable to get role",
+			Error:   err.Error(),
+		}
+	}
 
 	resource, err := s.ResourceRepository.GetResourceByUserID(user.UserID)
 	if err != nil {
@@ -281,9 +365,7 @@ func (s authService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 		resourceName = append(resourceName, res.Name)
 	}
 
-	log.Printf("Resource Name: %v", resourceName)
-
-	token, err := s.JWTService.GenerateToken(*user, resourceName)
+	token, err := s.JWTService.GenerateToken(*user, resourceName, role.Name)
 	if err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -316,7 +398,7 @@ func (s authService) Login(req *in.LoginRequest) (interface{}, response.ErrorRes
 	return responses, response.ErrorResponse{}
 }
 
-func (s authService) LoginPhoneNumber(req *in.LoginPhoneNumber) (interface{}, response.ErrorResponse) {
+func (s authService) LoginPhoneNumber(req *in.LoginPhoneNumber, deviceID string) (interface{}, response.ErrorResponse) {
 	hashPhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
 	if err != nil {
 		return nil, response.ErrorResponse{
@@ -351,8 +433,15 @@ func (s authService) LoginPhoneNumber(req *in.LoginPhoneNumber) (interface{}, re
 		}
 	}
 
-	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
-	user.Role = *role
+	if deviceID == "MOBILE" {
+		if user.DeviceID != &req.DeviceID {
+			return nil, response.ErrorResponse{
+				Code:    http.StatusBadRequest,
+				Message: "User is logged in another device",
+				Error:   "User is logged in another device",
+			}
+		}
+	}
 
 	resource, err := s.ResourceRepository.GetResourceByUserID(user.UserID)
 	if err != nil {
@@ -368,7 +457,16 @@ func (s authService) LoginPhoneNumber(req *in.LoginPhoneNumber) (interface{}, re
 		resourceName = append(resourceName, res.Name)
 	}
 
-	token, err := s.JWTService.GenerateToken(*user, resourceName)
+	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Unable to get role",
+			Error:   err.Error(),
+		}
+	}
+
+	token, err := s.JWTService.GenerateToken(*user, resourceName, role.Name)
 	if err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -399,6 +497,116 @@ func (s authService) LoginPhoneNumber(req *in.LoginPhoneNumber) (interface{}, re
 		RefreshToken:   token.RefreshToken,
 	}
 	return responses, response.ErrorResponse{}
+}
+
+func (s authService) ChangeDeviceID(req *struct {
+	PhoneNumber string `json:"phone_number" binding:"required"`
+	DeviceID    string `json:"device_id" binding:"required"`
+}) (interface{}, response.ErrorResponse) {
+	hashPhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Phone Number is invalid",
+			Error:   err.Error(),
+		}
+	}
+
+	user, err := s.UserRepository.GetUserByPhoneNumber(hashPhoneNumber)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Phone Number is invalid",
+			Error:   err.Error(),
+		}
+	}
+	hashDeviceID, err := s.Encryption.Encrypt(req.DeviceID)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Device ID is invalid",
+			Error:   err.Error(),
+		}
+	}
+	user.DeviceID = &hashDeviceID
+
+	requestID := uuid.New().String()
+
+	_ = s.RedisService.SaveDataExpired(utils.DeviceVerify, requestID, 1, user)
+
+	return map[string]interface{}{
+		"request_id": requestID,
+		"timestamp":  time.Now().Unix(),
+	}, response.ErrorResponse{}
+}
+
+func (s authService) VerifyDeviceID(req *struct {
+	RequestID string `json:"request_id" binding:"required"`
+	PinCode   string `json:"pin_code" binding:"required"`
+}) (interface{}, response.ErrorResponse) {
+	data, err := utils.GetUserRedis(s.RedisService, utils.DeviceVerify, req.RequestID)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User not found",
+			Error:   err.Error(),
+		}
+	}
+
+	_ = s.RedisService.DeleteData(utils.DeviceVerify, req.RequestID)
+
+	user, err := s.UserRepository.GetUserByClientID(data.ClientID)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User not found",
+			Error:   err.Error(),
+		}
+	}
+
+	err = s.Encryption.CheckPassword(user.PinCode, req.PinCode)
+	if err != nil {
+		if updateErr := s.UserRepository.UpdatePinAttempts(data.ClientID); updateErr != nil {
+			return out.RegisterResponse{}, response.ErrorResponse{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid User",
+				Error:   updateErr.Error(),
+			}
+		}
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Pin Code",
+			Error:   err.Error(),
+		}
+	}
+
+	user.DeviceID = data.DeviceID
+	user.UpdatedBy = user.ClientID
+
+	if err = s.UserRepository.UpdateUser(user); err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User not found",
+			Error:   err.Error(),
+		}
+	}
+
+	deviceID, err := s.Encryption.Decrypt(*user.DeviceID)
+	if err != nil {
+		deviceID = *user.DeviceID
+	}
+
+	phoneNumber, err := s.Encryption.Decrypt(user.PhoneNumber)
+	if err != nil {
+		phoneNumber = user.PhoneNumber
+	}
+
+	user.DeviceID = &deviceID
+	user.PhoneNumber = phoneNumber
+
+	_ = s.RedisService.SaveData(utils.User, user.ClientID, user)
+
+	return user, response.ErrorResponse{}
 }
 
 func (s authService) VerifyPinCode(req *struct {
@@ -542,7 +750,7 @@ func (s authService) RegisterInternalToken(req *struct {
 		}
 	}
 
-	if err := s.ResourceRepository.CreateInternalToken(resource.ResourceID, token); err != nil {
+	if err := s.AuthRepository.CreateInternalToken(resource.ResourceID, token); err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "user is not an admin",
@@ -664,9 +872,9 @@ func (s authService) ChangePassword(password *struct {
 }
 
 func (s authService) ResetPinAttempts() {
-	users, _ := s.UserRepository.GetListUser()
-	for _, user := range *users {
-		go func(u models.Users) {
+	listUsers, _ := s.UserRepository.GetListUser()
+	for _, user := range *listUsers {
+		go func(u users.Users) {
 			if u.PinAttempts > 0 {
 				u.PinAttempts = 0
 				_ = s.UserRepository.ResetPinAttempts(&u)
@@ -723,7 +931,7 @@ func (s authService) ForgetPinCode(req *struct {
 	user.PinLastUpdated = time.Now()
 	user.PinAttempts = 0
 	user.UpdatedBy = user.ClientID
-	err = s.UserRepository.UpdateProfile(user)
+	err = s.UserRepository.UpdateUser(user)
 	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusBadRequest,

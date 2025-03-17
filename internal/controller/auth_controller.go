@@ -15,6 +15,8 @@ type AuthController interface {
 	Register(c *gin.Context)
 	Login(c *gin.Context)
 	LoginPhoneNumber(c *gin.Context)
+	ChangeDeviceID(c *gin.Context)
+	VerifyDeviceID(c *gin.Context)
 	VerifyPinCode(c *gin.Context)
 	ChangePinCode(c *gin.Context)
 	ForgetPinCode(c *gin.Context)
@@ -48,23 +50,28 @@ func handleSuccessResponse(c *gin.Context, status int, message string, data inte
 
 // Register a new user
 func (h authController) Register(c *gin.Context) {
-	var errs = response.ErrorResponse{}
 	var req in.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
 		return
 	}
+	var deviceID = c.GetHeader("Device-ID")
 
-	user, errs := h.AuthService.Register(&req)
-	if errs.Message != "" {
-		handleErrorResponse(c, errs.Code, errs.Message, nil)
+	if deviceID != "WEB" && deviceID != "MOBILE" {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-ID", nil)
 		return
 	}
 
-	err := h.UserSession.AddUserSession(user.UserID, user.Token,
+	user, err := h.AuthService.Register(&req, deviceID)
+	if err.Message != "" {
+		handleErrorResponse(c, err.Code, err.Message, nil)
+		return
+	}
+
+	errSession := h.UserSession.AddUserSession(user.UserID, user.Token,
 		user.RefreshToken, c.ClientIP(), "WEB")
 
-	if err != nil {
+	if errSession != nil {
 		handleErrorResponse(c, http.StatusInternalServerError, "Failed to create user session", err)
 		return
 	}
@@ -73,7 +80,6 @@ func (h authController) Register(c *gin.Context) {
 }
 
 func (h authController) Login(c *gin.Context) {
-	var errs = response.ErrorResponse{}
 	var req in.LoginRequest
 	var deviceID = c.GetHeader("Device-ID")
 
@@ -87,16 +93,16 @@ func (h authController) Login(c *gin.Context) {
 		return
 	}
 
-	user, errs := h.AuthService.Login(&req)
-	if errs.Message != "" {
-		handleErrorResponse(c, errs.Code, errs.Message, nil)
+	user, err := h.AuthService.Login(&req, deviceID)
+	if err.Message != "" {
+		handleErrorResponse(c, err.Code, err.Message, nil)
 		return
 	}
 
-	err := h.UserSession.AddUserSession(user.(out.LoginResponse).UserID, user.(out.LoginResponse).Token,
+	errSession := h.UserSession.AddUserSession(user.(out.LoginResponse).UserID, user.(out.LoginResponse).Token,
 		user.(out.LoginResponse).RefreshToken, c.ClientIP(), deviceID)
 
-	if err != nil {
+	if errSession != nil {
 		handleErrorResponse(c, http.StatusInternalServerError, "Failed to create user session", err)
 		return
 	}
@@ -105,7 +111,6 @@ func (h authController) Login(c *gin.Context) {
 }
 
 func (h authController) LoginPhoneNumber(c *gin.Context) {
-	var errs = response.ErrorResponse{}
 	var req in.LoginPhoneNumber
 	var deviceID = c.GetHeader("Device-ID")
 
@@ -119,7 +124,7 @@ func (h authController) LoginPhoneNumber(c *gin.Context) {
 		return
 	}
 
-	user, errs := h.AuthService.LoginPhoneNumber(&req)
+	user, errs := h.AuthService.LoginPhoneNumber(&req, deviceID)
 	if errs.Message != "" {
 		handleErrorResponse(c, errs.Code, errs.Message, nil)
 		return
@@ -136,8 +141,47 @@ func (h authController) LoginPhoneNumber(c *gin.Context) {
 	handleSuccessResponse(c, http.StatusOK, "Login successful", user)
 }
 
+func (h authController) ChangeDeviceID(c *gin.Context) {
+	var req struct {
+		PhoneNumber string `json:"phone_number" binding:"required"`
+		DeviceID    string `json:"device_id" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+
+	data, errs := h.AuthService.ChangeDeviceID(&req)
+	if errs.Message != "" {
+		handleErrorResponse(c, errs.Code, errs.Message, nil)
+		return
+	}
+
+	handleSuccessResponse(c, http.StatusOK, "Device ID changed successfully", data)
+}
+
+func (h authController) VerifyDeviceID(c *gin.Context) {
+	var req struct {
+		RequestID string `json:"request_id" binding:"required"`
+		PinCode   string `json:"pin_code" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+
+	data, errs := h.AuthService.VerifyDeviceID(&req)
+	if errs.Message != "" {
+		handleErrorResponse(c, errs.Code, errs.Message, nil)
+		return
+	}
+
+	handleSuccessResponse(c, http.StatusOK, "Device ID verified successfully", data)
+}
+
 func (h authController) VerifyPinCode(c *gin.Context) {
-	var errs = response.ErrorResponse{}
 	var req struct {
 		PinCode string `json:"pin_code" binding:"required"`
 	}
@@ -153,9 +197,9 @@ func (h authController) VerifyPinCode(c *gin.Context) {
 		return
 	}
 
-	clientID, errs := h.AuthService.VerifyPinCode(&req, token.ClientID)
-	if errs.Message != "" {
-		handleErrorResponse(c, errs.Code, errs.Message, nil)
+	clientID, err := h.AuthService.VerifyPinCode(&req, token.ClientID)
+	if err.Message != "" {
+		handleErrorResponse(c, err.Code, err.Message, nil)
 		return
 	}
 
@@ -163,7 +207,6 @@ func (h authController) VerifyPinCode(c *gin.Context) {
 }
 
 func (h authController) ChangePinCode(c *gin.Context) {
-	var errs = response.ErrorResponse{}
 	var req struct {
 		OldPinCode string `json:"old_pin_code" binding:"required"`
 		NewPinCode string `json:"new_pin_code" binding:"required"`
@@ -180,7 +223,7 @@ func (h authController) ChangePinCode(c *gin.Context) {
 		return
 	}
 
-	errs = h.AuthService.ChangePinCode(&req, token.ClientID)
+	errs := h.AuthService.ChangePinCode(&req, token.ClientID)
 	if errs.Message != "" {
 		handleErrorResponse(c, errs.Code, errs.Message, nil)
 		return
@@ -190,7 +233,6 @@ func (h authController) ChangePinCode(c *gin.Context) {
 }
 
 func (h authController) ForgetPinCode(c *gin.Context) {
-	var errs = response.ErrorResponse{}
 	var req struct {
 		Email   string `json:"email" binding:"required"`
 		PinCode string `json:"pin_code" binding:"required"`
@@ -207,7 +249,7 @@ func (h authController) ForgetPinCode(c *gin.Context) {
 		return
 	}
 
-	errs = h.AuthService.ForgetPinCode(&req, token.ClientID)
+	errs := h.AuthService.ForgetPinCode(&req, token.ClientID)
 	if errs.Message != "" {
 		handleErrorResponse(c, errs.Code, errs.Message, nil)
 		return
@@ -236,7 +278,6 @@ func (h authController) RegisterInternalToken(c *gin.Context) {
 }
 
 func (h authController) UpdateRole(ctx *gin.Context) {
-	var errs = response.ErrorResponse{}
 	var req struct {
 		RoleID uint `json:"role_id" binding:"required"`
 	}
@@ -258,7 +299,7 @@ func (h authController) UpdateRole(ctx *gin.Context) {
 		return
 	}
 
-	errs = h.AuthService.UpdateRole(userID, req.RoleID, token.ClientID)
+	errs := h.AuthService.UpdateRole(userID, req.RoleID, token.ClientID)
 	if errs.Message != "" {
 		response.SendResponse(ctx, errs.Code, errs.Error, nil, errs.Message)
 		return

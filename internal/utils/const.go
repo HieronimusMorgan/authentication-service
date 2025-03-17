@@ -1,11 +1,19 @@
 package utils
 
 const (
-	User        = "user"
-	Token       = "token"
-	PinVerify   = "pin_verify"
-	UserSession = "user_session"
-	ClientID    = "client_id"
-	UserID      = "user_id"
-	RoleID      = "role_id"
+	User         = "user"
+	Token        = "token"
+	PinVerify    = "pin_verify"
+	DeviceVerify = "device_verify"
+	UserSession  = "user_session"
+	ClientID     = "client_id"
+	UserID       = "user_id"
+	RoleID       = "role_id"
+)
+
+const (
+	TableFamilyName                 = "authentication.family"
+	TableFamilyPermissionName       = "authentication.family_permission"
+	TableFamilyMemberPermissionName = "authentication.family_member_permission"
+	TableFamilyMemberName           = "authentication.family_member"
 )

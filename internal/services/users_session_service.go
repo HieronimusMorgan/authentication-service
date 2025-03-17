@@ -1,7 +1,7 @@
 package services
 
 import (
-	"authentication/internal/models"
+	"authentication/internal/models/users"
 	"authentication/internal/repository"
 	"authentication/internal/utils"
 	"github.com/rs/zerolog/log"
@@ -10,7 +10,7 @@ import (
 
 type UsersSessionService interface {
 	AddUserSession(userID uint, token, refreshToken, ipAddress, userAgent string) error
-	GetUserSessionByUserID(userID uint) (*models.UserSession, error)
+	GetUserSessionByUserID(userID uint) (*users.UserSession, error)
 	LogoutSession(userID uint) error
 	CheckUser()
 }
@@ -42,7 +42,7 @@ func (s usersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 	}
 
 	tokenClaims, err := s.JWTService.ExtractClaims(token)
-	var userSession = &models.UserSession{
+	var userSession = &users.UserSession{
 		UserID:       userID,
 		SessionToken: token,
 		RefreshToken: refreshToken,
@@ -51,8 +51,8 @@ func (s usersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 		LoginTime:    time.Now(),
 		LogoutTime:   nil,
 		ExpiresAt:    time.Unix(tokenClaims.Exp, 0),
-		CreatedBy:    user.FullName,
-		UpdatedBy:    user.FullName,
+		CreatedBy:    user.ClientID,
+		UpdatedBy:    user.ClientID,
 	}
 
 	session, err := s.UserSessionRepository.GetUserSessionByUserID(userID)
@@ -69,7 +69,7 @@ func (s usersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 	session.ExpiresAt = time.Unix(tokenClaims.Exp, 0)
 	session.IsActive = true
 	session.LogoutTime = nil
-	session.UpdatedBy = user.FullName
+	session.UpdatedBy = user.ClientID
 
 	err = s.UserSessionRepository.UpdateSession(session)
 	if err != nil {
@@ -81,7 +81,7 @@ func (s usersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 	return nil
 }
 
-func (s usersSessionService) GetUserSessionByUserID(userID uint) (*models.UserSession, error) {
+func (s usersSessionService) GetUserSessionByUserID(userID uint) (*users.UserSession, error) {
 	return s.UserSessionRepository.GetUserSessionByUserID(userID)
 }
 
@@ -98,7 +98,7 @@ func (s usersSessionService) LogoutSession(userID uint) error {
 	}
 	session.IsActive = false
 	session.LogoutTime = &currentTime
-	session.UpdatedBy = user.FullName
+	session.UpdatedBy = user.ClientID
 
 	_ = s.Redis.SaveData(utils.UserSession, user.ClientID, session)
 
@@ -106,15 +106,15 @@ func (s usersSessionService) LogoutSession(userID uint) error {
 }
 
 func (s usersSessionService) CheckUser() {
-	userSession, err := s.UserSessionRepository.GetUserSession()
+	userSession, err := s.UserSessionRepository.GetUserSessionExpired()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get user session")
 		return
 	}
 
 	for _, session := range *userSession {
-		go func(session models.UserSession) {
-			if time.Now().After(session.ExpiresAt) {
+		go func(session users.UserSession) {
+			if time.Now().After(session.ExpiresAt) && session.IsActive {
 				session.IsActive = false
 				session.UpdatedBy = "system"
 				_ = s.UserSessionRepository.UpdateSession(&session)

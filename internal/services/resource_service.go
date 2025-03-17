@@ -2,7 +2,9 @@ package services
 
 import (
 	"authentication/internal/dto/out"
-	"authentication/internal/models"
+	"authentication/internal/models/resource"
+	"authentication/internal/models/role"
+	"authentication/internal/models/users"
 	"authentication/internal/repository"
 	"errors"
 	"strings"
@@ -40,7 +42,7 @@ func NewResourceService(
 	}
 }
 
-func (s resourceService) checkUserIsAdmin(user *models.Users) error {
+func (s resourceService) checkUserIsAdmin(user *users.Users) error {
 	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
 	if err != nil {
 		return errors.New("role not found")
@@ -62,7 +64,7 @@ func (s resourceService) AddResource(name *string, description *string, clientID
 		return nil, err
 	}
 
-	var resource = models.Resource{
+	var resource = resource.Resource{
 		Name:        *name,
 		Description: *description,
 		CreatedBy:   user.FullName,
@@ -156,7 +158,7 @@ func (s resourceService) AssignResourceToRole(roleID uint, resourceID uint, clie
 		return nil, err
 	}
 
-	var roleResource = &models.RoleResource{
+	var roleResource = &role.RoleResource{
 		RoleID:     roleID,
 		ResourceID: resourceID,
 		CreatedBy:  user.FullName,
@@ -243,7 +245,7 @@ func (s resourceService) GetResourceUserById(resourceID uint, clientID string) (
 		ClientID    string
 		FullName    string
 		PhoneNumber string
-		RoleName    string
+		RoleID      uint
 		CreatedAt   string
 		UpdatedAt   string
 	}
@@ -254,7 +256,7 @@ func (s resourceService) GetResourceUserById(resourceID uint, clientID string) (
 			ClientID    string
 			FullName    string
 			PhoneNumber string
-			RoleName    string
+			RoleID      uint
 			CreatedAt   string
 			UpdatedAt   string
 		}{
@@ -262,7 +264,7 @@ func (s resourceService) GetResourceUserById(resourceID uint, clientID string) (
 			ClientID:    user.ClientID,
 			FullName:    user.FullName,
 			PhoneNumber: user.PhoneNumber,
-			RoleName:    user.Role.Name,
+			RoleID:      user.RoleID,
 			CreatedAt:   user.CreatedAt.String(),
 			UpdatedAt:   user.UpdatedAt.String(),
 		})
@@ -275,7 +277,7 @@ func (s resourceService) GetResourceUserById(resourceID uint, clientID string) (
 			ClientID    string
 			FullName    string
 			PhoneNumber string
-			RoleName    string
+			RoleID      uint
 			CreatedAt   string
 			UpdatedAt   string
 		} `json:"users"`

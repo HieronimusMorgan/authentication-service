@@ -1,22 +1,21 @@
 package repository
 
 import (
-	"authentication/internal/models"
+	"authentication/internal/models/resource"
 	"gorm.io/gorm"
 )
 
 type ResourceRepository interface {
-	AddResource(resource *models.Resource) error
-	GetResourceByID(resourceID uint) (*models.Resource, error)
-	GetResourceByUserID(userID uint) (*[]models.Resource, error)
+	AddResource(resource *resource.Resource) error
+	GetResourceByID(resourceID uint) (*resource.Resource, error)
+	GetResourceByUserID(userID uint) (*[]resource.Resource, error)
 	DeleteResourceById(resourceID uint) error
-	DeleteResource(resource *models.Resource) error
-	UpdateResource(resource *models.Resource) error
-	GetAllResources() (*[]models.Resource, error)
-	GetResourceByResourceID(resourceID uint) (*models.Resource, error)
-	GetResourceByResourceName(resourceName string) (*models.Resource, error)
-	GetResourceByName(resourceName string) (*models.Resource, error)
-	CreateInternalToken(resourceID uint, internalToken string) error
+	DeleteResource(resource *resource.Resource) error
+	UpdateResource(resource *resource.Resource) error
+	GetAllResources() (*[]resource.Resource, error)
+	GetResourceByResourceID(resourceID uint) (*resource.Resource, error)
+	GetResourceByResourceName(resourceName string) (*resource.Resource, error)
+	GetResourceByName(resourceName string) (*resource.Resource, error)
 }
 
 type resourceRepository struct {
@@ -27,7 +26,7 @@ func NewResourceRepository(db gorm.DB) ResourceRepository {
 	return &resourceRepository{db: db}
 }
 
-func (r resourceRepository) AddResource(resource *models.Resource) error {
+func (r resourceRepository) AddResource(resource *resource.Resource) error {
 	err := r.db.Where("name LIKE ?", resource.Name).FirstOrCreate(resource).Error
 	if err != nil {
 		return err
@@ -35,8 +34,8 @@ func (r resourceRepository) AddResource(resource *models.Resource) error {
 	return nil
 }
 
-func (r resourceRepository) GetResourceByID(resourceID uint) (*models.Resource, error) {
-	var resource models.Resource
+func (r resourceRepository) GetResourceByID(resourceID uint) (*resource.Resource, error) {
+	var resource resource.Resource
 	err := r.db.Where("resource_id = ?", resourceID).First(&resource).Error
 	if err != nil {
 		return nil, err
@@ -44,8 +43,8 @@ func (r resourceRepository) GetResourceByID(resourceID uint) (*models.Resource, 
 	return &resource, nil
 }
 
-func (r resourceRepository) GetResourceByUserID(userID uint) (*[]models.Resource, error) {
-	var resources []models.Resource
+func (r resourceRepository) GetResourceByUserID(userID uint) (*[]resource.Resource, error) {
+	var resources []resource.Resource
 	query := `
 		SELECT res.*
 		FROM "authentication"."resources" res
@@ -68,14 +67,14 @@ func (r resourceRepository) GetResourceByUserID(userID uint) (*[]models.Resource
 }
 
 func (r resourceRepository) DeleteResourceById(resourceID uint) error {
-	err := r.db.Where("resource_id = ?", resourceID).Delete(&models.Resource{}).Error
+	err := r.db.Where("resource_id = ?", resourceID).Delete(&resource.Resource{}).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r resourceRepository) DeleteResource(resource *models.Resource) error {
+func (r resourceRepository) DeleteResource(resource *resource.Resource) error {
 	err := r.db.Model(&resource).
 		Update("deleted_by", resource.DeletedBy).
 		Delete(&resource).Error
@@ -85,7 +84,7 @@ func (r resourceRepository) DeleteResource(resource *models.Resource) error {
 	return nil
 }
 
-func (r resourceRepository) UpdateResource(resource *models.Resource) error {
+func (r resourceRepository) UpdateResource(resource *resource.Resource) error {
 	err := r.db.Save(resource).Error
 	if err != nil {
 		return err
@@ -93,8 +92,8 @@ func (r resourceRepository) UpdateResource(resource *models.Resource) error {
 	return nil
 }
 
-func (r resourceRepository) GetAllResources() (*[]models.Resource, error) {
-	var resources []models.Resource
+func (r resourceRepository) GetAllResources() (*[]resource.Resource, error) {
+	var resources []resource.Resource
 	err := r.db.Find(&resources).Where("delete_at NOT NULL").Order("resource_id ASC").Error
 	if err != nil {
 		return nil, err
@@ -102,8 +101,8 @@ func (r resourceRepository) GetAllResources() (*[]models.Resource, error) {
 	return &resources, nil
 }
 
-func (r resourceRepository) GetResourceByResourceID(resourceID uint) (*models.Resource, error) {
-	var resource models.Resource
+func (r resourceRepository) GetResourceByResourceID(resourceID uint) (*resource.Resource, error) {
+	var resource resource.Resource
 	err := r.db.Where("resource_id = ?", resourceID).First(&resource).Error
 	if err != nil {
 		return nil, err
@@ -111,8 +110,8 @@ func (r resourceRepository) GetResourceByResourceID(resourceID uint) (*models.Re
 	return &resource, nil
 }
 
-func (r resourceRepository) GetResourceByResourceName(resourceName string) (*models.Resource, error) {
-	var resource models.Resource
+func (r resourceRepository) GetResourceByResourceName(resourceName string) (*resource.Resource, error) {
+	var resource resource.Resource
 	err := r.db.Where("resource_name = ?", resourceName).First(&resource).Error
 	if err != nil {
 		return nil, err
@@ -120,23 +119,11 @@ func (r resourceRepository) GetResourceByResourceName(resourceName string) (*mod
 	return &resource, nil
 }
 
-func (r resourceRepository) GetResourceByName(resourceName string) (*models.Resource, error) {
-	var resource models.Resource
+func (r resourceRepository) GetResourceByName(resourceName string) (*resource.Resource, error) {
+	var resource resource.Resource
 	err := r.db.Where("name = ?", resourceName).First(&resource).Error
 	if err != nil {
 		return nil, err
 	}
 	return &resource, nil
-}
-
-func (r resourceRepository) CreateInternalToken(resourceID uint, internalToken string) error {
-	internal := models.InternalToken{
-		ResourceID: resourceID,
-		Token:      internalToken,
-	}
-	err := r.db.Create(&internal).Error
-	if err != nil {
-		return err
-	}
-	return nil
 }

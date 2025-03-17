@@ -35,17 +35,22 @@ type Services struct {
 	UserSessionService services.UsersSessionService
 	ResourceService    services.ResourceService
 	RoleService        services.RoleService
+	FamilyService      services.FamilyService
 }
 
 // Repository contains repository (database access objects)
 type Repository struct {
-	AuthRepo         repository.AuthRepository
-	UserRepo         repository.UserRepository
-	ResourceRepo     repository.ResourceRepository
-	RoleResourceRepo repository.RoleResourceRepository
-	RoleRepo         repository.RoleRepository
-	UserRoleRepo     repository.UserRoleRepository
-	UserSessionRepo  repository.UserSessionRepository
+	AuthRepository                   repository.AuthRepository
+	UserRepository                   repository.UserRepository
+	ResourceRepository               repository.ResourceRepository
+	RoleResourceRepository           repository.RoleResourceRepository
+	RoleRepository                   repository.RoleRepository
+	UserRoleRepository               repository.UserRoleRepository
+	UserSessionRepository            repository.UserSessionRepository
+	FamilyPermissionRepository       repository.FamilyPermissionRepository
+	FamilyRepository                 repository.FamilyRepository
+	FamilyMemberPermissionRepository repository.FamilyMemberPermissionRepository
+	FamilyMemberRepository           repository.FamilyMemberRepository
 }
 
 type Controller struct {
@@ -53,6 +58,7 @@ type Controller struct {
 	UserController     controller.UserController
 	ResourceController controller.ResourceController
 	RoleController     controller.RoleController
+	FamilyController   controller.FamilyController
 }
 
 type Middleware struct {

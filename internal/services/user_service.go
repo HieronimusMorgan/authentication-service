@@ -3,7 +3,7 @@ package services
 import (
 	"authentication/internal/dto/in"
 	"authentication/internal/dto/out"
-	"authentication/internal/models"
+	"authentication/internal/models/users"
 	"authentication/internal/repository"
 	"authentication/internal/utils"
 	"authentication/package/response"
@@ -43,7 +43,6 @@ func NewUserService(
 }
 
 func (s userService) GetProfile(clientID string) (*out.UserResponse, response.ErrorResponse) {
-
 	user, err := s.UserRepository.GetUserResponseByClientID(clientID)
 	if err != nil {
 		return nil, response.ErrorResponse{
@@ -77,7 +76,7 @@ func (s userService) UpdateNameUserProfile(updateNameRequest *in.UpdateNameReque
 	user.FullName = user.FirstName + " " + user.LastName
 	user.UpdatedBy = user.FullName
 
-	err = s.UserRepository.UpdateProfile(user)
+	err = s.UserRepository.UpdateUser(user)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +108,7 @@ func (s userService) UpdatePhotoUserProfile(req *in.UpdatePhotoRequest, clientID
 	user.ProfilePicture = req.ProfilePicture
 	user.UpdatedBy = user.FullName
 
-	err = s.UserRepository.UpdateProfile(user)
+	err = s.UserRepository.UpdateUser(user)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +141,7 @@ func (s userService) DeleteUserById(userID uint, clientID string) response.Error
 		}
 	}
 
-	var user *models.Users
+	var user *users.Users
 	user, err = s.UserRepository.GetUserByID(userID)
 	if err != nil {
 		return response.ErrorResponse{

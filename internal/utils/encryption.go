@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"golang.org/x/crypto/bcrypt"
+	"regexp"
 )
 
 // Encryption interface defines the methods for encryption, decryption, and hashing
@@ -89,4 +90,25 @@ func (a *encryption) HashPassword(password string) (string, error) {
 // CheckPassword verifies a bcrypt hashed password
 func (a *encryption) CheckPassword(hash, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
+func ValidatePhoneNumber(phone string) error {
+	pattern := `^\+62\d{8,12}$`
+	matched, err := regexp.MatchString(pattern, phone)
+	if err != nil {
+		return err
+	}
+	if !matched {
+		return errors.New("invalid phone number: must start with +62 and contain only 10-14 digits")
+	}
+	if containsInvalidCharacters(phone) {
+		return errors.New("invalid phone number: contains unsupported characters")
+	}
+	return nil
+}
+
+func containsInvalidCharacters(phone string) bool {
+	invalidPattern := `[^\+\d]`
+	matched, _ := regexp.MatchString(invalidPattern, phone)
+	return matched
 }

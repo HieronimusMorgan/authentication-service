@@ -14,13 +14,23 @@ func ValidationTrimSpace(s string) string {
 	return trim
 }
 
+// Custom error messages
+var (
+	ErrUsernameLength  = errors.New("username must be between 3 and 20 characters")
+	ErrUsernameInvalid = errors.New("username can only contain alphanumeric characters and underscores")
+)
+
+// ValidateUsername checks if the username meets the criteria
 func ValidateUsername(username string) error {
+	username = strings.TrimSpace(username) // Trim spaces
+
 	if len(username) < 3 || len(username) > 20 {
-		return errors.New("username must be between 3 and 20 characters")
+		return ErrUsernameLength
 	}
-	validUsername := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+
+	validUsername := regexp.MustCompile(`^[a-zA-Z0-9@#$%&_\-.]+$`)
 	if !validUsername.MatchString(username) {
-		return errors.New("username can only contain alphanumeric characters and underscores")
+		return ErrUsernameInvalid
 	}
 
 	return nil

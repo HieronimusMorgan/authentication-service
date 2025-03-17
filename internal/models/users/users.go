@@ -1,4 +1,4 @@
-package models
+package users
 
 import (
 	"gorm.io/gorm"
@@ -20,7 +20,7 @@ type Users struct {
 	PhoneNumber    string         `gorm:"unique" json:"phone_number,omitempty"`
 	ProfilePicture string         `json:"profile_picture,omitempty"`
 	RoleID         uint           `gorm:"not null" json:"role_id,omitempty"`
-	Role           Role           `gorm:"foreignKey:RoleID;constraint:OnDelete:CASCADE" json:"role,omitempty"`
+	DeviceID       *string        `json:"device_id,omitempty"`
 	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at,omitempty"`
 	CreatedBy      string         `json:"created_by,omitempty"`
 	UpdatedAt      time.Time      `gorm:"autoUpdateTime" json:"updated_at,omitempty"`
