@@ -3,7 +3,7 @@ package services
 import (
 	"authentication/internal/dto/in"
 	"authentication/internal/dto/out"
-	"authentication/internal/models/users"
+	"authentication/internal/models"
 	"authentication/internal/repository"
 	"authentication/internal/utils"
 	"authentication/package/response"
@@ -141,7 +141,7 @@ func (s userService) DeleteUserById(userID uint, clientID string) response.Error
 		}
 	}
 
-	var user *users.Users
+	var user *models.Users
 	user, err = s.UserRepository.GetUserByID(userID)
 	if err != nil {
 		return response.ErrorResponse{

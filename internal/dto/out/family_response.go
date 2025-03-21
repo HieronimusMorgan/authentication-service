@@ -30,3 +30,12 @@ type FamilyMemberPermissionResponse struct {
 	PermissionName string `gorm:"unique;not null" json:"permission_name,omitempty"`
 	Description    string `json:"description,omitempty"`
 }
+
+type FamilyMembersResponse struct {
+	UserID         uint   `json:"user_id,omitempty"`
+	Username       string `json:"username"`
+	FirstName      string `json:"first_name"`
+	LastName       string `json:"last_name"`
+	PhoneNumber    string `json:"phone_number"`
+	ProfilePicture string `json:"profile_picture"`
+}

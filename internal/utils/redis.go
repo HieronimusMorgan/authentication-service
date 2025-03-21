@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"authentication/internal/models/users"
+	"authentication/internal/models"
 	"context"
 	"encoding/json"
 	"errors"
@@ -104,8 +104,8 @@ func (r redisService) DeleteToken(clientID string) error {
 	return err
 }
 
-func GetUserRedis(redis RedisService, key string, clientID string) (*users.Users, error) {
-	var u = &users.Users{}
+func GetUserRedis(redis RedisService, key string, clientID string) (*models.Users, error) {
+	var u = &models.Users{}
 	err := redis.GetData(key, clientID, u)
 	if err != nil {
 		return nil, err

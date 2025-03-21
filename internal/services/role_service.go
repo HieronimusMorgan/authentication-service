@@ -2,7 +2,7 @@ package services
 
 import (
 	"authentication/internal/dto/out"
-	"authentication/internal/models/role"
+	"authentication/internal/models"
 	"authentication/internal/repository"
 	"encoding/json"
 	"errors"
@@ -48,7 +48,7 @@ func (s roleService) RegisterRole(req *struct {
 		return nil, err
 	}
 
-	var role = &role.Role{
+	var role = &models.Role{
 		Name:        req.Name,
 		Description: req.Description,
 		CreatedBy:   user.FullName,

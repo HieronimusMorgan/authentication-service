@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"authentication/internal/models/users"
+	"authentication/internal/models"
 	"authentication/package/response"
 	"errors"
 	"fmt"
@@ -14,7 +14,7 @@ import (
 )
 
 type JWTService interface {
-	GenerateToken(user users.Users, resourceName []string, roleName string) (users.TokenDetails, error)
+	GenerateToken(user models.Users, resourceName []string, roleName string) (models.TokenDetails, error)
 	ValidateToken(tokenString string) (*jwt.MapClaims, error)
 	ValidateTokenAdmin(tokenString string) (*jwt.MapClaims, error)
 	ExtractClaims(tokenString string) (*TokenClaims, error)
@@ -36,8 +36,8 @@ func NewJWTService(jwtSecret string) JWTService {
 }
 
 // GenerateToken generates a new JWT token
-func (j jwtService) GenerateToken(user users.Users, resourceName []string, roleName string) (users.TokenDetails, error) {
-	td := &users.TokenDetails{
+func (j jwtService) GenerateToken(user models.Users, resourceName []string, roleName string) (models.TokenDetails, error) {
+	td := &models.TokenDetails{
 		AtExpires:   time.Now().Add(time.Hour * 24).Unix(),
 		AccessUUID:  uuid.New().String(),
 		RtExpires:   time.Now().Add(time.Hour * 24 * 7).Unix(),
@@ -59,7 +59,7 @@ func (j jwtService) GenerateToken(user users.Users, resourceName []string, roleN
 	var err error
 	td.AccessToken, err = at.SignedString(j.SecretKey)
 	if err != nil {
-		return users.TokenDetails{}, err
+		return models.TokenDetails{}, err
 	}
 
 	td.RefreshToken = GenerateClientID()

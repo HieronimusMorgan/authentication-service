@@ -2,9 +2,7 @@ package services
 
 import (
 	"authentication/internal/dto/out"
-	"authentication/internal/models/resource"
-	"authentication/internal/models/role"
-	"authentication/internal/models/users"
+	"authentication/internal/models"
 	"authentication/internal/repository"
 	"errors"
 	"strings"
@@ -42,7 +40,7 @@ func NewResourceService(
 	}
 }
 
-func (s resourceService) checkUserIsAdmin(user *users.Users) error {
+func (s resourceService) checkUserIsAdmin(user *models.Users) error {
 	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
 	if err != nil {
 		return errors.New("role not found")
@@ -64,7 +62,7 @@ func (s resourceService) AddResource(name *string, description *string, clientID
 		return nil, err
 	}
 
-	var resource = resource.Resource{
+	var resource = models.Resource{
 		Name:        *name,
 		Description: *description,
 		CreatedBy:   user.FullName,
@@ -158,7 +156,7 @@ func (s resourceService) AssignResourceToRole(roleID uint, resourceID uint, clie
 		return nil, err
 	}
 
-	var roleResource = &role.RoleResource{
+	var roleResource = &models.RoleResource{
 		RoleID:     roleID,
 		ResourceID: resourceID,
 		CreatedBy:  user.FullName,

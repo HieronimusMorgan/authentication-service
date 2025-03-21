@@ -2,12 +2,11 @@ package repository
 
 import (
 	"authentication/internal/models"
-	"authentication/internal/models/users"
 	"gorm.io/gorm"
 )
 
 type AuthRepository interface {
-	UpdatePinCode(user *users.Users) error
+	UpdatePinCode(user *models.Users) error
 	CreateInternalToken(resourceID uint, token string) error
 }
 
@@ -19,7 +18,7 @@ func NewAuthRepository(db gorm.DB) AuthRepository {
 	return &authRepository{db: db}
 }
 
-func (r authRepository) UpdatePinCode(user *users.Users) error {
+func (r authRepository) UpdatePinCode(user *models.Users) error {
 	return r.db.Save(user).Error
 }
 

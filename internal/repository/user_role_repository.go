@@ -1,18 +1,18 @@
 package repository
 
 import (
-	"authentication/internal/models/users"
+	"authentication/internal/models"
 	"gorm.io/gorm"
 )
 
 type UserRoleRepository interface {
-	RegisterUserRole(userRole **users.UserRole) error
-	GetUserRoleByUserID(userID uint) (*users.UserRole, error)
-	UpdateUserRole(userRole **users.UserRole) error
-	DeleteUserRole(userRole **users.UserRole) error
-	GetAllUserRole() (*[]users.UserRole, error)
-	GetUserRoleByID(id uint) (*users.UserRole, error)
-	GetUserRoleByRoleID(roleID uint) (*users.UserRole, error)
+	RegisterUserRole(userRole **models.UserRole) error
+	GetUserRoleByUserID(userID uint) (*models.UserRole, error)
+	UpdateUserRole(userRole **models.UserRole) error
+	DeleteUserRole(userRole **models.UserRole) error
+	GetAllUserRole() (*[]models.UserRole, error)
+	GetUserRoleByID(id uint) (*models.UserRole, error)
+	GetUserRoleByRoleID(roleID uint) (*models.UserRole, error)
 }
 
 type userRoleRepository struct {
@@ -23,7 +23,7 @@ func NewUserRoleRepository(db gorm.DB) UserRoleRepository {
 	return &userRoleRepository{db: db}
 }
 
-func (r userRoleRepository) RegisterUserRole(userRole **users.UserRole) error {
+func (r userRoleRepository) RegisterUserRole(userRole **models.UserRole) error {
 	err := r.db.Create(userRole).Error
 	if err != nil {
 		return err
@@ -31,8 +31,8 @@ func (r userRoleRepository) RegisterUserRole(userRole **users.UserRole) error {
 	return nil
 }
 
-func (r userRoleRepository) GetUserRoleByUserID(userID uint) (*users.UserRole, error) {
-	var userRole users.UserRole
+func (r userRoleRepository) GetUserRoleByUserID(userID uint) (*models.UserRole, error) {
+	var userRole models.UserRole
 	err := r.db.Where("user_id = ?", userID).First(&userRole).Error
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func (r userRoleRepository) GetUserRoleByUserID(userID uint) (*users.UserRole, e
 	return &userRole, nil
 }
 
-func (r userRoleRepository) UpdateUserRole(userRole **users.UserRole) error {
+func (r userRoleRepository) UpdateUserRole(userRole **models.UserRole) error {
 	err := r.db.Save(userRole).Error
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func (r userRoleRepository) UpdateUserRole(userRole **users.UserRole) error {
 	return nil
 }
 
-func (r userRoleRepository) DeleteUserRole(userRole **users.UserRole) error {
+func (r userRoleRepository) DeleteUserRole(userRole **models.UserRole) error {
 	err := r.db.Model(userRole).
 		Update("deleted_by", (*userRole).DeletedBy).
 		Delete(userRole).Error
@@ -58,8 +58,8 @@ func (r userRoleRepository) DeleteUserRole(userRole **users.UserRole) error {
 	return nil
 }
 
-func (r userRoleRepository) GetAllUserRole() (*[]users.UserRole, error) {
-	var userRoles []users.UserRole
+func (r userRoleRepository) GetAllUserRole() (*[]models.UserRole, error) {
+	var userRoles []models.UserRole
 	err := r.db.Find(&userRoles).Error
 	if err != nil {
 		return nil, err
@@ -67,8 +67,8 @@ func (r userRoleRepository) GetAllUserRole() (*[]users.UserRole, error) {
 	return &userRoles, nil
 }
 
-func (r userRoleRepository) GetUserRoleByID(id uint) (*users.UserRole, error) {
-	var userRole users.UserRole
+func (r userRoleRepository) GetUserRoleByID(id uint) (*models.UserRole, error) {
+	var userRole models.UserRole
 	err := r.db.Where("id = ?", id).First(&userRole).Error
 	if err != nil {
 		return nil, err
@@ -76,8 +76,8 @@ func (r userRoleRepository) GetUserRoleByID(id uint) (*users.UserRole, error) {
 	return &userRole, nil
 }
 
-func (r userRoleRepository) GetUserRoleByRoleID(roleID uint) (*users.UserRole, error) {
-	var userRole users.UserRole
+func (r userRoleRepository) GetUserRoleByRoleID(roleID uint) (*models.UserRole, error) {
+	var userRole models.UserRole
 	err := r.db.Where("role_id = ?", roleID).First(&userRole).Error
 	if err != nil {
 		return nil, err

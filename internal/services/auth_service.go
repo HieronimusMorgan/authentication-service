@@ -3,7 +3,7 @@ package services
 import (
 	"authentication/internal/dto/in"
 	"authentication/internal/dto/out"
-	"authentication/internal/models/users"
+	"authentication/internal/models"
 	"authentication/internal/repository"
 	"authentication/internal/utils"
 	"authentication/package/response"
@@ -87,7 +87,7 @@ func NewAuthService(
 	}
 }
 
-func (s authService) checkUserIsAdmin(user *users.Users) response.ErrorResponse {
+func (s authService) checkUserIsAdmin(user *models.Users) response.ErrorResponse {
 	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
 	if err != nil {
 		return response.ErrorResponse{
@@ -208,7 +208,7 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 		}
 	}
 
-	user := &users.Users{
+	user := &models.Users{
 		ClientID:       utils.GenerateClientID(),
 		Username:       req.Username,
 		Password:       hashedPassword,
@@ -241,7 +241,7 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 		}
 	}
 
-	userRole := &users.UserRole{
+	userRole := &models.UserRole{
 		UserID:    user.UserID,
 		RoleID:    role.RoleID,
 		CreatedBy: "system",
@@ -874,7 +874,7 @@ func (s authService) ChangePassword(password *struct {
 func (s authService) ResetPinAttempts() {
 	listUsers, _ := s.UserRepository.GetListUser()
 	for _, user := range *listUsers {
-		go func(u users.Users) {
+		go func(u models.Users) {
 			if u.PinAttempts > 0 {
 				u.PinAttempts = 0
 				_ = s.UserRepository.ResetPinAttempts(&u)

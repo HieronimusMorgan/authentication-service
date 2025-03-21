@@ -12,8 +12,8 @@ const (
 )
 
 const (
-	TableFamilyName                 = "authentication.family"
-	TableFamilyPermissionName       = "authentication.family_permission"
-	TableFamilyMemberPermissionName = "authentication.family_member_permission"
-	TableFamilyMemberName           = "authentication.family_member"
+	TableFamilyName                 = "family"
+	TableFamilyPermissionName       = "family_permission"
+	TableFamilyMemberPermissionName = "family_member_permission"
+	TableFamilyMemberName           = "family_member"
 )

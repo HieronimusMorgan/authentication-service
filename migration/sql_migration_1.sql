@@ -28,7 +28,7 @@ CREATE TABLE users
     full_name        VARCHAR(255),
     phone_number     VARCHAR(50) UNIQUE,
     profile_picture  TEXT,
-    role_id          INT                 NOT NULL REFERENCES roles (role_id) ON DELETE CASCADE,
+    role_id   INT                 NOT NULL,
     device_id VARCHAR(100),
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by       VARCHAR(255),
@@ -104,9 +104,10 @@ CREATE TABLE family_permission
 
 -- Insert default family_permission
 INSERT INTO family_permission (permission_name, description)
-VALUES ('Read', 'Read/View assets'),
+VALUES ('Admin', 'Full control over family members and assets'),
+       ('Manage', 'Manage family members and permissions'),
        ('Read-Write', 'Read and Write access to assets'),
-       ('Manage', 'Manage family members and permissions');
+       ('Read', 'Read/View assets');
 
 CREATE TABLE family_member_permission
 (
@@ -115,10 +116,6 @@ CREATE TABLE family_member_permission
     permission_id INT REFERENCES family_permission (permission_id) ON DELETE CASCADE,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by    VARCHAR(255),
-    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by    VARCHAR(255),
-    deleted_at    TIMESTAMP NULL,
-    deleted_by    VARCHAR(255),
     PRIMARY KEY (family_id, user_id, permission_id)
 );
 

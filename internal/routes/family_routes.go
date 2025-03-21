@@ -13,6 +13,10 @@ func FamilyRoutes(r *gin.Engine, middleware config.Middleware, familyController 
 	{
 		protected.POST("/create", familyController.CreateFamily)
 		protected.POST("/add-member", familyController.AddMemberFamily)
+		protected.POST("/add-permission", familyController.AddFamilyMemberPermission)
+		protected.POST("/remove-permission", familyController.RemoveFamilyMemberPermission)
+		protected.GET("/member/:id", familyController.GetFamilyMembers)
+		protected.POST("/delete/:id", familyController.RemoveMemberFamily)
 	}
 
 }

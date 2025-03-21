@@ -19,3 +19,9 @@ type FamilyMemberPermissionRequest struct {
 	UserID       uint `json:"user_id,omitempty" binding:"required"`
 	PermissionID uint `json:"permission_id,omitempty" binding:"required"`
 }
+
+type ChangeFamilyMemberPermissionRequest struct {
+	FamilyID     uint   `json:"family_id,omitempty" binding:"required"`
+	PhoneNumber  string `json:"phone_number,omitempty" binding:"required"`
+	PermissionID uint   `json:"permission_id,omitempty" binding:"required"`
+}

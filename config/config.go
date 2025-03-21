@@ -31,7 +31,7 @@ type Config struct {
 	DBUser     string `envconfig:"DB_USER" default:"postgres"`
 	DBPassword string `envconfig:"DB_PASSWORD" default:"admin"`
 	DBName     string `envconfig:"DB_NAME" default:"authentication"`
-	DBSchema   string `envconfig:"DB_SCHEMA" default:"authentication"`
+	DBSchema   string `envconfig:"DB_SCHEMA" default:"public"`
 	DBSSLMode  string `envconfig:"DB_SSLMODE" default:"disable"`
 }
 

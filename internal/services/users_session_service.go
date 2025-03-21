@@ -1,7 +1,7 @@
 package services
 
 import (
-	"authentication/internal/models/users"
+	"authentication/internal/models"
 	"authentication/internal/repository"
 	"authentication/internal/utils"
 	"github.com/rs/zerolog/log"
@@ -10,7 +10,7 @@ import (
 
 type UsersSessionService interface {
 	AddUserSession(userID uint, token, refreshToken, ipAddress, userAgent string) error
-	GetUserSessionByUserID(userID uint) (*users.UserSession, error)
+	GetUserSessionByUserID(userID uint) (*models.UserSession, error)
 	LogoutSession(userID uint) error
 	CheckUser()
 }
@@ -42,7 +42,7 @@ func (s usersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 	}
 
 	tokenClaims, err := s.JWTService.ExtractClaims(token)
-	var userSession = &users.UserSession{
+	var userSession = &models.UserSession{
 		UserID:       userID,
 		SessionToken: token,
 		RefreshToken: refreshToken,
@@ -81,7 +81,7 @@ func (s usersSessionService) AddUserSession(userID uint, token, refreshToken, ip
 	return nil
 }
 
-func (s usersSessionService) GetUserSessionByUserID(userID uint) (*users.UserSession, error) {
+func (s usersSessionService) GetUserSessionByUserID(userID uint) (*models.UserSession, error) {
 	return s.UserSessionRepository.GetUserSessionByUserID(userID)
 }
 
@@ -113,7 +113,7 @@ func (s usersSessionService) CheckUser() {
 	}
 
 	for _, session := range *userSession {
-		go func(session users.UserSession) {
+		go func(session models.UserSession) {
 			if time.Now().After(session.ExpiresAt) && session.IsActive {
 				session.IsActive = false
 				session.UpdatedBy = "system"
