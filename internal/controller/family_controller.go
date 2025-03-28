@@ -11,6 +11,7 @@ import (
 
 type FamilyController interface {
 	CreateFamily(c *gin.Context)
+	UpdateFamily(c *gin.Context)
 	AddMemberFamily(c *gin.Context)
 	AddFamilyMemberPermission(c *gin.Context)
 	RemoveFamilyMemberPermission(c *gin.Context)
@@ -19,12 +20,13 @@ type FamilyController interface {
 }
 
 type familyController struct {
-	FamilyService services.FamilyService
-	JWTService    utils.JWTService
+	FamilyService       services.FamilyService
+	FamilyMemberService services.FamilyMemberService
+	JWTService          utils.JWTService
 }
 
-func NewFamilyController(serviceFamily services.FamilyService, jwtService utils.JWTService) FamilyController {
-	return familyController{FamilyService: serviceFamily, JWTService: jwtService}
+func NewFamilyController(serviceFamily services.FamilyService, serviceFamilyMember services.FamilyMemberService, jwtService utils.JWTService) FamilyController {
+	return familyController{FamilyService: serviceFamily, FamilyMemberService: serviceFamilyMember, JWTService: jwtService}
 }
 
 func (f familyController) CreateFamily(c *gin.Context) {
@@ -49,6 +51,28 @@ func (f familyController) CreateFamily(c *gin.Context) {
 	response.SendResponse(c, http.StatusOK, "Success", nil, "Family created successfully")
 }
 
+func (f familyController) UpdateFamily(c *gin.Context) {
+	var req in.FamilyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	token, exist := utils.ExtractTokenClaims(c)
+	if !exist {
+		response.SendResponse(c, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	err := f.FamilyService.UpdateFamily(&req, token.ClientID)
+	if err.Message != "" {
+		response.SendResponse(c, err.Code, err.Error, nil, err.Message)
+		return
+	}
+
+	response.SendResponse(c, http.StatusOK, "Success", nil, "Family updated successfully")
+}
+
 func (f familyController) AddMemberFamily(c *gin.Context) {
 	var req in.FamilyMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -62,7 +86,7 @@ func (f familyController) AddMemberFamily(c *gin.Context) {
 		return
 	}
 
-	err := f.FamilyService.AddFamilyMember(&req, token.ClientID)
+	err := f.FamilyMemberService.AddFamilyMember(&req, token.ClientID)
 	if err.Message != "" {
 		response.SendResponse(c, err.Code, err.Error, nil, err.Message)
 		return
@@ -128,7 +152,7 @@ func (f familyController) GetFamilyMembers(c *gin.Context) {
 		return
 	}
 
-	members, errs := f.FamilyService.GetFamilyMemberByFamilyID(familyID, token.ClientID)
+	members, errs := f.FamilyMemberService.GetFamilyMemberByFamilyID(familyID, token.ClientID)
 	if errs.Message != "" {
 		response.SendResponse(c, errs.Code, errs.Error, nil, errs.Message)
 		return
@@ -150,7 +174,7 @@ func (f familyController) RemoveMemberFamily(c *gin.Context) {
 		return
 	}
 
-	err := f.FamilyService.RemoveFamilyMember(&req, token.ClientID)
+	err := f.FamilyMemberService.RemoveFamilyMember(&req, token.ClientID)
 	if err.Message != "" {
 		response.SendResponse(c, err.Code, err.Error, nil, err.Message)
 		return

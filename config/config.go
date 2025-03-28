@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -83,37 +84,38 @@ func InitGin() *gin.Engine {
 
 // InitDatabase initializes and returns a PostgreSQL database connection with retry logic
 func InitDatabase(cfg *Config) *gorm.DB {
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode,
-	)
-
+	var once sync.Once
 	var db *gorm.DB
 	var err error
-	maxRetries := 5
+	once.Do(func() {
+		dsn := fmt.Sprintf(
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode,
+		)
+		maxRetries := 5
+		for i := 1; i <= maxRetries; i++ {
+			db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+				Logger:         logger.Default.LogMode(logger.Info),
+				NamingStrategy: schemaNamingStrategy(cfg.DBSchema),
+			})
+			if err == nil {
+				break
+			}
 
-	for i := 1; i <= maxRetries; i++ {
-		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-			Logger:         logger.Default.LogMode(logger.Info),
-			NamingStrategy: schemaNamingStrategy(cfg.DBSchema),
-		})
-		if err == nil {
-			break
+			logrus.WithFields(logrus.Fields{
+				"attempt": i,
+				"error":   err.Error(),
+			}).Warn("⏳ Retrying database connection...")
+
+			time.Sleep(2 * time.Second)
 		}
 
-		logrus.WithFields(logrus.Fields{
-			"attempt": i,
-			"error":   err.Error(),
-		}).Warn("⏳ Retrying database connection...")
+		if err != nil {
+			logrus.WithError(err).Fatal("❌ Failed to connect to PostgreSQL after retries")
+		}
 
-		time.Sleep(2 * time.Second)
-	}
-
-	if err != nil {
-		logrus.WithError(err).Fatal("❌ Failed to connect to PostgreSQL after retries")
-	}
-
-	logrus.Info("✅ Connected to PostgreSQL")
+		logrus.Info("✅ Connected to PostgreSQL")
+	})
 	return db
 }
 

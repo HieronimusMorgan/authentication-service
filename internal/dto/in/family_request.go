@@ -4,9 +4,20 @@ type FamilyRequest struct {
 	FamilyName string `json:"family_name" binding:"required"`
 }
 
+type UpdateFamilyRequest struct {
+	FamilyID   uint   `json:"family_id" binding:"required"`
+	FamilyName string `json:"family_name" binding:"required"`
+}
+
 type FamilyMemberRequest struct {
 	FamilyID    uint   `json:"family_id,omitempty" binding:"required"`
 	PhoneNumber string `json:"phone_number,omitempty" binding:"required"`
+}
+
+type UpdateFamilyMemberPermissionsRequest struct {
+	FamilyID     uint   `json:"family_id,omitempty" binding:"required"`
+	PermissionID uint   `json:"permission_id,omitempty" binding:"required"`
+	PhoneNumber  string `json:"phone_number,omitempty" binding:"required"`
 }
 
 type FamilyPermissionRequest struct {

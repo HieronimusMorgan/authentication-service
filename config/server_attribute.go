@@ -96,6 +96,14 @@ func (s *ServerConfig) initServices() {
 			s.Redis,
 			s.JWTService,
 			s.Encryption.EncryptionService),
+		FamilyMemberService: services.NewFamilyMemberService(s.Repository.UserRepository,
+			s.Repository.FamilyPermissionRepository,
+			s.Repository.FamilyRepository,
+			s.Repository.FamilyMemberPermissionRepository,
+			s.Repository.FamilyMemberRepository,
+			s.Redis,
+			s.JWTService,
+			s.Encryption.EncryptionService),
 	}
 }
 
@@ -111,7 +119,7 @@ func (s *ServerConfig) initController() {
 		UserController:     controller.NewUserController(s.Services.UserService, s.JWTService),
 		ResourceController: controller.NewResourceController(s.Services.ResourceService, s.JWTService),
 		RoleController:     controller.NewRoleController(s.Services.RoleService, s.JWTService),
-		FamilyController:   controller.NewFamilyController(s.Services.FamilyService, s.JWTService),
+		FamilyController:   controller.NewFamilyController(s.Services.FamilyService, s.Services.FamilyMemberService, s.JWTService),
 	}
 }
 

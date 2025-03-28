@@ -10,10 +10,10 @@ import (
 
 type FamilyRepository interface {
 	CreateFamily(family *models.Family, familyPermission []models.FamilyPermission, member *models.FamilyMember) error
+	GetFamilyByID(id uint) (*models.Family, error)
 	GetFamilyByFamilyIdAndOwnerID(familyID, userID uint) (*models.Family, error)
 	GetFamilyByOwnerID(userID uint) (*models.Family, error)
 	UpdateFamily(family *models.Family) error
-	DeleteFamily(family *models.Family) error
 	GetAllFamilies() ([]models.Family, error)
 	GetFamilyResponseByClientID(clientID string) (*out.FamilyResponse, error)
 	DeleteFamilyByID(id uint) error
@@ -60,6 +60,14 @@ func (r *familyRepository) CreateFamily(family *models.Family, familyPermissions
 	})
 }
 
+func (r *familyRepository) GetFamilyByID(id uint) (*models.Family, error) {
+	var f models.Family
+	if err := r.db.Table(utils.TableFamilyName).Where("family_id = ?", id).First(&f).Error; err != nil {
+		return nil, err
+	}
+	return &f, nil
+}
+
 func (r *familyRepository) GetFamilyByFamilyIdAndOwnerID(familyID, userID uint) (*models.Family, error) {
 	var f models.Family
 	if err := r.db.Table(utils.TableFamilyName).Where("family_id = ? AND owner_id = ?", familyID, userID).First(&f).Error; err != nil {
@@ -78,10 +86,6 @@ func (r *familyRepository) GetFamilyByOwnerID(userID uint) (*models.Family, erro
 
 func (r *familyRepository) UpdateFamily(family *models.Family) error {
 	return r.db.Table(utils.TableFamilyName).Save(family).Error
-}
-
-func (r *familyRepository) DeleteFamily(family *models.Family) error {
-	return r.db.Table(utils.TableFamilyName).Delete(family).Error
 }
 
 func (r *familyRepository) GetAllFamilies() ([]models.Family, error) {
