@@ -42,103 +42,103 @@ CREATE INDEX idx_users_client_id ON users (client_id);
 CREATE INDEX idx_users_username ON users (username);
 CREATE INDEX idx_users_email ON users (email);
 
-CREATE TABLE family
-(
-    family_id   SERIAL PRIMARY KEY,
-    family_name VARCHAR(255) NOT NULL,
-    owner_id    INT          NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by  VARCHAR(255),
-    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by  VARCHAR(255),
-    deleted_at  TIMESTAMP NULL,
-    deleted_by  VARCHAR(255)
-);
-
-CREATE TABLE family_invitation_status
-(
-    status_id   SERIAL PRIMARY KEY,
-    status_name VARCHAR(50) NOT NULL UNIQUE,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by  VARCHAR(255),
-    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by  VARCHAR(255),
-    deleted_at  TIMESTAMP NULL,
-    deleted_by  VARCHAR(255)
-);
-
--- Insert default invitation statuses
-INSERT INTO family_invitation_status (status_name)
-VALUES ('Pending'),
-       ('Accepted'),
-       ('Rejected');
-
-CREATE TABLE family_invitation
-(
-    invitation_id    SERIAL PRIMARY KEY,
-    family_id        INT NOT NULL REFERENCES family (family_id) ON DELETE CASCADE,
-    sender_user_id   INT NOT NULL REFERENCES users (user_id),
-    receiver_user_id INT NOT NULL REFERENCES users (user_id),
-    status_id        INT NOT NULL REFERENCES family_invitation_status (status_id),
-    invited_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    responded_at     TIMESTAMP DEFAULT NULL,
-    UNIQUE (family_id, receiver_user_id)
-);
-
-CREATE INDEX idx_family_invitation_sender_user_id ON family_invitation (sender_user_id);
-CREATE INDEX idx_family_invitation_receiver_user_id ON family_invitation (receiver_user_id);
-CREATE INDEX idx_family_invitation_status_id ON family_invitation (status_id);
-
-CREATE TABLE family_permission
-(
-    permission_id   SERIAL PRIMARY KEY,
-    permission_name VARCHAR(100) UNIQUE NOT NULL,
-    description     TEXT,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by      VARCHAR(255),
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by      VARCHAR(255),
-    deleted_at      TIMESTAMP NULL,
-    deleted_by      VARCHAR(255)
-);
-
--- Insert default family_permission
-INSERT INTO family_permission (permission_name, description)
-VALUES ('Admin', 'Full control over family members and assets'),
-       ('Manage', 'Manage family members and permissions'),
-       ('Read-Write', 'Read and Write access to assets'),
-       ('Read', 'Read/View assets');
-
-CREATE TABLE family_member_permission
-(
-    family_id     INT REFERENCES family (family_id) ON DELETE CASCADE,
-    user_id       INT REFERENCES users (user_id) ON DELETE CASCADE,
-    permission_id INT REFERENCES family_permission (permission_id) ON DELETE CASCADE,
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by    VARCHAR(255),
-    PRIMARY KEY (family_id, user_id, permission_id)
-);
-
-CREATE INDEX idx_fmp_user ON family_member_permission (user_id);
-CREATE INDEX idx_fmp_family ON family_member_permission (family_id);
-CREATE INDEX idx_fmp_permission ON family_member_permission (permission_id);
-
-CREATE TABLE family_member
-(
-    family_id  INT REFERENCES family (family_id) ON DELETE CASCADE,
-    user_id    INT REFERENCES users (user_id) ON DELETE CASCADE,
-    joined_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255),
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(255),
-    deleted_at TIMESTAMP NULL,
-    deleted_by VARCHAR(255),
-    PRIMARY KEY (family_id, user_id)
-);
-
-CREATE INDEX idx_family_member_family_id ON family_member (family_id);
-CREATE INDEX idx_family_member_user_id ON family_member (user_id);
+-- CREATE TABLE family
+-- (
+--     family_id   SERIAL PRIMARY KEY,
+--     family_name VARCHAR(255) NOT NULL,
+--     owner_id    INT          NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+--     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     created_by  VARCHAR(255),
+--     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     updated_by  VARCHAR(255),
+--     deleted_at  TIMESTAMP NULL,
+--     deleted_by  VARCHAR(255)
+-- );
+--
+-- CREATE TABLE family_invitation_status
+-- (
+--     status_id   SERIAL PRIMARY KEY,
+--     status_name VARCHAR(50) NOT NULL UNIQUE,
+--     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     created_by  VARCHAR(255),
+--     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     updated_by  VARCHAR(255),
+--     deleted_at  TIMESTAMP NULL,
+--     deleted_by  VARCHAR(255)
+-- );
+--
+-- -- Insert default invitation statuses
+-- INSERT INTO family_invitation_status (status_name)
+-- VALUES ('Pending'),
+--        ('Accepted'),
+--        ('Rejected');
+--
+-- CREATE TABLE family_invitation
+-- (
+--     invitation_id    SERIAL PRIMARY KEY,
+--     family_id        INT NOT NULL REFERENCES family (family_id) ON DELETE CASCADE,
+--     sender_user_id   INT NOT NULL REFERENCES users (user_id),
+--     receiver_user_id INT NOT NULL REFERENCES users (user_id),
+--     status_id        INT NOT NULL REFERENCES family_invitation_status (status_id),
+--     invited_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     responded_at     TIMESTAMP DEFAULT NULL,
+--     UNIQUE (family_id, receiver_user_id)
+-- );
+--
+-- CREATE INDEX idx_family_invitation_sender_user_id ON family_invitation (sender_user_id);
+-- CREATE INDEX idx_family_invitation_receiver_user_id ON family_invitation (receiver_user_id);
+-- CREATE INDEX idx_family_invitation_status_id ON family_invitation (status_id);
+--
+-- CREATE TABLE family_permission
+-- (
+--     permission_id   SERIAL PRIMARY KEY,
+--     permission_name VARCHAR(100) UNIQUE NOT NULL,
+--     description     TEXT,
+--     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     created_by      VARCHAR(255),
+--     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     updated_by      VARCHAR(255),
+--     deleted_at      TIMESTAMP NULL,
+--     deleted_by      VARCHAR(255)
+-- );
+--
+-- -- Insert default family_permission
+-- INSERT INTO family_permission (permission_name, description)
+-- VALUES ('Admin', 'Full control over family members and assets'),
+--        ('Manage', 'Manage family members and permissions'),
+--        ('Read-Write', 'Read and Write access to assets'),
+--        ('Read', 'Read/View assets');
+--
+-- CREATE TABLE family_member_permission
+-- (
+--     family_id     INT REFERENCES family (family_id) ON DELETE CASCADE,
+--     user_id       INT REFERENCES users (user_id) ON DELETE CASCADE,
+--     permission_id INT REFERENCES family_permission (permission_id) ON DELETE CASCADE,
+--     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     created_by    VARCHAR(255),
+--     PRIMARY KEY (family_id, user_id, permission_id)
+-- );
+--
+-- CREATE INDEX idx_fmp_user ON family_member_permission (user_id);
+-- CREATE INDEX idx_fmp_family ON family_member_permission (family_id);
+-- CREATE INDEX idx_fmp_permission ON family_member_permission (permission_id);
+--
+-- CREATE TABLE family_member
+-- (
+--     family_id  INT REFERENCES family (family_id) ON DELETE CASCADE,
+--     user_id    INT REFERENCES users (user_id) ON DELETE CASCADE,
+--     joined_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     created_by VARCHAR(255),
+--     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     updated_by VARCHAR(255),
+--     deleted_at TIMESTAMP NULL,
+--     deleted_by VARCHAR(255),
+--     PRIMARY KEY (family_id, user_id)
+-- );
+--
+-- CREATE INDEX idx_family_member_family_id ON family_member (family_id);
+-- CREATE INDEX idx_family_member_user_id ON family_member (user_id);
 
 -- Resources Table
 CREATE TABLE resources

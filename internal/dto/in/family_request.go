@@ -10,14 +10,14 @@ type UpdateFamilyRequest struct {
 }
 
 type FamilyMemberRequest struct {
-	FamilyID    uint   `json:"family_id,omitempty" binding:"required"`
-	PhoneNumber string `json:"phone_number,omitempty" binding:"required"`
+	FamilyID uint `json:"family_id,omitempty" binding:"required"`
+	UserID   uint `json:"user_id,omitempty" binding:"required"`
 }
 
 type UpdateFamilyMemberPermissionsRequest struct {
-	FamilyID     uint   `json:"family_id,omitempty" binding:"required"`
-	PermissionID uint   `json:"permission_id,omitempty" binding:"required"`
-	PhoneNumber  string `json:"phone_number,omitempty" binding:"required"`
+	FamilyID     uint `json:"family_id,omitempty" binding:"required"`
+	PermissionID uint `json:"permission_id,omitempty" binding:"required"`
+	UserID       uint `json:"user_id,omitempty" binding:"required"`
 }
 
 type FamilyPermissionRequest struct {
@@ -29,10 +29,4 @@ type FamilyMemberPermissionRequest struct {
 	FamilyID     uint `json:"family_id,omitempty" binding:"required"`
 	UserID       uint `json:"user_id,omitempty" binding:"required"`
 	PermissionID uint `json:"permission_id,omitempty" binding:"required"`
-}
-
-type ChangeFamilyMemberPermissionRequest struct {
-	FamilyID     uint   `json:"family_id,omitempty" binding:"required"`
-	PhoneNumber  string `json:"phone_number,omitempty" binding:"required"`
-	PermissionID uint   `json:"permission_id,omitempty" binding:"required"`
 }

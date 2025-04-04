@@ -30,13 +30,14 @@ type ServerConfig struct {
 
 // Services holds all service dependencies
 type Services struct {
-	AuthService         services.AuthService
-	UserService         services.UserService
-	UserSessionService  services.UsersSessionService
-	ResourceService     services.ResourceService
-	RoleService         services.RoleService
-	FamilyService       services.FamilyService
-	FamilyMemberService services.FamilyMemberService
+	AuthService                   services.AuthService
+	UserService                   services.UserService
+	UserSessionService            services.UsersSessionService
+	ResourceService               services.ResourceService
+	RoleService                   services.RoleService
+	FamilyService                 services.FamilyService
+	FamilyMemberService           services.FamilyMemberService
+	FamilyMemberPermissionService services.FamilyMemberPermissionService
 }
 
 // Repository contains repository (database access objects)

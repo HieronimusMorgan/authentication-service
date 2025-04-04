@@ -12,9 +12,8 @@ import (
 
 type FamilyMemberService interface {
 	AddFamilyMember(req *in.FamilyMemberRequest, clientID string) response.ErrorResponse
-	UpdateFamilyMemberPermissions(req *in.UpdateFamilyMemberPermissionsRequest, clientID string) response.ErrorResponse
-	GetFamilyMemberByFamilyID(familyID uint, clientID string) ([]out.FamilyMembersResponse, response.ErrorResponse)
 	RemoveFamilyMember(req *in.FamilyMemberRequest, clientID string) response.ErrorResponse
+	GetFamilyMemberByFamilyID(familyID uint, clientID string) ([]out.FamilyMembersResponse, response.ErrorResponse)
 }
 
 type familyMemberService struct {
@@ -59,7 +58,7 @@ func (s *familyMemberService) AddFamilyMember(req *in.FamilyMemberRequest, clien
 		}
 	}
 
-	userOwner, err := s.UserRepository.GetUserByClientID(data.ClientID)
+	user, err := s.UserRepository.GetUserByClientID(data.ClientID)
 	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -68,24 +67,7 @@ func (s *familyMemberService) AddFamilyMember(req *in.FamilyMemberRequest, clien
 		}
 	}
 
-	if err := utils.ValidatePhoneNumber(req.PhoneNumber); err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Validation Phone Number",
-			Error:   err.Error(),
-		}
-	}
-
-	hashPhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to encrypt phone number",
-			Error:   err.Error(),
-		}
-	}
-
-	newMember, err := s.UserRepository.GetUserByPhoneNumber(hashPhoneNumber)
+	newMember, err := s.UserRepository.GetUserByID(req.UserID)
 	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -94,8 +76,7 @@ func (s *familyMemberService) AddFamilyMember(req *in.FamilyMemberRequest, clien
 		}
 	}
 
-	// Check if the user is the owner of the family
-	familyOwner, err := s.FamilyRepository.GetFamilyByOwnerID(userOwner.UserID)
+	familyOwner, err := s.FamilyRepository.GetFamilyByOwnerID(user.UserID)
 	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -112,7 +93,6 @@ func (s *familyMemberService) AddFamilyMember(req *in.FamilyMemberRequest, clien
 		}
 	}
 
-	// Check if the user is already a member of the family
 	isMember, _ := s.FamilyMemberRepository.GetFamilyMembersByFamilyIDAndMemberID(req.FamilyID, newMember.UserID)
 
 	if isMember != nil {
@@ -126,8 +106,8 @@ func (s *familyMemberService) AddFamilyMember(req *in.FamilyMemberRequest, clien
 	newMemberFamily := &models.FamilyMember{
 		FamilyID:  familyOwner.FamilyID,
 		UserID:    newMember.UserID,
-		CreatedBy: userOwner.ClientID,
-		UpdatedBy: userOwner.ClientID,
+		CreatedBy: user.ClientID,
+		UpdatedBy: user.ClientID,
 	}
 
 	// Create family member permission
@@ -144,7 +124,7 @@ func (s *familyMemberService) AddFamilyMember(req *in.FamilyMemberRequest, clien
 		PermissionID: readOnly.PermissionID,
 		FamilyID:     familyOwner.FamilyID,
 		UserID:       newMember.UserID,
-		CreatedBy:    userOwner.ClientID,
+		CreatedBy:    user.ClientID,
 	}
 
 	err = s.FamilyMemberRepository.CreateFamilyMember(newMemberFamily, permission)
@@ -159,7 +139,7 @@ func (s *familyMemberService) AddFamilyMember(req *in.FamilyMemberRequest, clien
 	return response.ErrorResponse{}
 }
 
-func (s *familyMemberService) UpdateFamilyMemberPermissions(req *in.UpdateFamilyMemberPermissionsRequest, clientID string) response.ErrorResponse {
+func (s *familyMemberService) RemoveFamilyMember(req *in.FamilyMemberRequest, clientID string) response.ErrorResponse {
 	data, err := utils.GetUserRedis(s.RedisService, utils.User, clientID)
 	if err != nil {
 		return response.ErrorResponse{
@@ -177,46 +157,7 @@ func (s *familyMemberService) UpdateFamilyMemberPermissions(req *in.UpdateFamily
 			Error:   err.Error(),
 		}
 	}
-
-	permissionOwner, err := s.FamilyPermissionRepository.GetListFamilyPermissionAccess(userOwner.UserID)
-	if err != nil {
-		return response.ErrorResponse{Code: http.StatusBadRequest, Message: "Permission not found", Error: err.Error()}
-	}
-
-	hasPermission := false
-	for _, v := range permissionOwner {
-		if v.PermissionName == "Admin" || v.PermissionName == "Manage" {
-			hasPermission = true
-			break
-		}
-	}
-
-	if !hasPermission {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Permission denied",
-			Error:   "You don't have permission to change the permission",
-		}
-	}
-
-	if err := utils.ValidatePhoneNumber(req.PhoneNumber); err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Validation Phone Number",
-			Error:   err.Error(),
-		}
-	}
-
-	hashPhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to encrypt phone number",
-			Error:   err.Error(),
-		}
-	}
-
-	member, err := s.UserRepository.GetUserByPhoneNumber(hashPhoneNumber)
+	member, err := s.UserRepository.GetUserByID(req.UserID)
 	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -225,7 +166,15 @@ func (s *familyMemberService) UpdateFamilyMemberPermissions(req *in.UpdateFamily
 		}
 	}
 
-	permission, err := s.FamilyPermissionRepository.GetFamilyPermissionByID(req.PermissionID)
+	_, err = s.FamilyPermissionRepository.GetFamilyPermissionByName("Manage")
+	if err != nil {
+		return response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Permission not found",
+			Error:   err.Error(),
+		}
+	}
+	_, err = s.FamilyMemberPermissionRepository.GetFamilyMemberPermissionByUserID(userOwner.UserID)
 	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -234,24 +183,7 @@ func (s *familyMemberService) UpdateFamilyMemberPermissions(req *in.UpdateFamily
 		}
 	}
 
-	permissionUser, err := s.FamilyMemberPermissionRepository.GetFamilyMemberPermissionByUserID(userOwner.UserID)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Permission not found",
-			Error:   err.Error(),
-		}
-	}
-
-	if permission.PermissionID != permissionUser.PermissionID {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Permission denied",
-			Error:   "You cannot change the owner's permission",
-		}
-	}
-
-	_, err = s.FamilyMemberRepository.GetFamilyMembersByFamilyIDAndMemberID(req.FamilyID, member.UserID)
+	memberFamily, err := s.FamilyMemberRepository.GetFamilyMembersByFamilyIDAndMemberID(req.FamilyID, member.UserID)
 	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -260,16 +192,15 @@ func (s *familyMemberService) UpdateFamilyMemberPermissions(req *in.UpdateFamily
 		}
 	}
 
-	permissionUser.PermissionID = permission.PermissionID
-	err = s.FamilyMemberPermissionRepository.UpdateFamilyMemberPermission(permissionUser)
+	memberFamily.DeletedBy = data.ClientID
+	err = s.FamilyMemberRepository.DeleteFamilyMember(memberFamily)
 	if err != nil {
 		return response.ErrorResponse{
 			Code:    http.StatusInternalServerError,
-			Message: "Failed to update permission",
+			Message: "Failed to delete member",
 			Error:   err.Error(),
 		}
 	}
-
 	return response.ErrorResponse{}
 }
 
@@ -305,96 +236,4 @@ func (s *familyMemberService) GetFamilyMemberByFamilyID(familyID uint, clientID 
 	}
 
 	return fm, response.ErrorResponse{}
-}
-
-func (s *familyMemberService) RemoveFamilyMember(req *in.FamilyMemberRequest, clientID string) response.ErrorResponse {
-	data, err := utils.GetUserRedis(s.RedisService, utils.User, clientID)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "User not found",
-			Error:   err.Error(),
-		}
-	}
-
-	userOwner, err := s.UserRepository.GetUserByClientID(data.ClientID)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "User not found",
-			Error:   err.Error(),
-		}
-	}
-
-	if err := utils.ValidatePhoneNumber(req.PhoneNumber); err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Validation Phone Number",
-			Error:   err.Error(),
-		}
-	}
-
-	hashPhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to encrypt phone number",
-			Error:   err.Error(),
-		}
-
-	}
-
-	member, err := s.UserRepository.GetUserByPhoneNumber(hashPhoneNumber)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "User not found",
-			Error:   err.Error(),
-		}
-	}
-
-	permission, err := s.FamilyPermissionRepository.GetFamilyPermissionByName("Manage")
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Permission not found",
-			Error:   err.Error(),
-		}
-	}
-	permissionUser, err := s.FamilyMemberPermissionRepository.GetFamilyMemberPermissionByUserID(userOwner.UserID)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Permission not found",
-			Error:   err.Error(),
-		}
-	}
-
-	if permission.PermissionID != permissionUser.PermissionID {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Permission denied",
-			Error:   "You cannot remove the owner of the family",
-		}
-	}
-
-	memberFamily, err := s.FamilyMemberRepository.GetFamilyMembersByFamilyIDAndMemberID(req.FamilyID, member.UserID)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Member not found",
-			Error:   err.Error(),
-		}
-	}
-
-	memberFamily.DeletedBy = data.ClientID
-	err = s.FamilyMemberRepository.DeleteFamilyMember(memberFamily)
-	if err != nil {
-		return response.ErrorResponse{
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to delete member",
-			Error:   err.Error(),
-		}
-	}
-	return response.ErrorResponse{}
 }

@@ -8,10 +8,13 @@ import (
 )
 
 type FamilyMemberPermissionRepository interface {
+	GetFamilyMemberPermissionByUserID(userID uint) ([]models.FamilyMemberPermission, error)
+	AddFamilyMemberPermission(family *models.FamilyMemberPermission) error
+	RemoveFamilyMemberPermission(family *models.FamilyMemberPermission) error
+	GetListFamilyMemberPermissionByFamilyIDAndUserID(familyID uint, userID uint) ([]out.FamilyPermissionResponse, error)
+
 	CreateFamilyMemberPermission(family *models.FamilyMemberPermission) error
 	GetFamilyMemberPermissionByID(id uint) (*models.FamilyMemberPermission, error)
-	GetFamilyMemberPermissionByUserID(userID uint) (*models.FamilyMemberPermission, error)
-	UpdateFamilyMemberPermission(family *models.FamilyMemberPermission) error
 	DeleteFamilyMemberPermissionByFamilyAndUserAndPermission(familyID, userID, permissionID uint) error
 	DeleteFamilyMemberPermission(family *models.FamilyMemberPermission) error
 	DeleteFamilyMemberPermissionByFamilyAndMember(familyID uint, memberID uint) error
@@ -44,16 +47,20 @@ func (r *familyMemberPermissionRepository) GetFamilyMemberPermissionByID(id uint
 	return &familyMemberPermission, nil
 }
 
-func (r *familyMemberPermissionRepository) GetFamilyMemberPermissionByUserID(userID uint) (*models.FamilyMemberPermission, error) {
-	var familyMemberPermission models.FamilyMemberPermission
-	if err := r.db.Table(utils.TableFamilyMemberPermissionName).Where("user_id = ?", userID).First(&familyMemberPermission).Error; err != nil {
+func (r *familyMemberPermissionRepository) GetFamilyMemberPermissionByUserID(userID uint) ([]models.FamilyMemberPermission, error) {
+	var familyMemberPermissions []models.FamilyMemberPermission
+	if err := r.db.Table(utils.TableFamilyMemberPermissionName).Where("user_id = ?", userID).Find(&familyMemberPermissions).Error; err != nil {
 		return nil, err
 	}
-	return &familyMemberPermission, nil
+	return familyMemberPermissions, nil
 }
 
-func (r *familyMemberPermissionRepository) UpdateFamilyMemberPermission(family *models.FamilyMemberPermission) error {
-	return r.db.Table(utils.TableFamilyMemberPermissionName).Save(family).Error
+func (r *familyMemberPermissionRepository) AddFamilyMemberPermission(familyMemberPermission *models.FamilyMemberPermission) error {
+	return r.db.Table(utils.TableFamilyMemberPermissionName).Create(familyMemberPermission).Error
+}
+
+func (r *familyMemberPermissionRepository) RemoveFamilyMemberPermission(familyMemberPermission *models.FamilyMemberPermission) error {
+	return r.db.Table(utils.TableFamilyMemberPermissionName).Delete(familyMemberPermission).Error
 }
 
 func (r *familyMemberPermissionRepository) DeleteFamilyMemberPermissionByFamilyAndUserAndPermission(familyID, userID, permissionID uint) error {
@@ -122,4 +129,18 @@ func (r *familyMemberPermissionRepository) GetAllFamilyMemberPermissionResponseB
 		return nil, err
 	}
 	return &response, nil
+}
+
+func (r *familyMemberPermissionRepository) GetListFamilyMemberPermissionByFamilyIDAndUserID(familyID uint, userID uint) ([]out.FamilyPermissionResponse, error) {
+	var permissions []out.FamilyPermissionResponse
+	query := `
+		SELECT fp.*
+		FROM "family_permission" fp
+		JOIN "family_member_permission" fmp ON fp.permission_id = fmp.permission_id
+		WHERE fmp.user_id = ? AND fmp.family_id = ?
+	`
+	if err := r.db.Raw(query, userID, familyID).Scan(&permissions).Error; err != nil {
+		return nil, err
+	}
+	return permissions, nil
 }

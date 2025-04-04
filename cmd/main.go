@@ -29,7 +29,7 @@ func main() {
 	routes.AuthRoutes(engine, serverConfig.Middleware, serverConfig.Controller.AuthController)
 	routes.RoleRoutes(engine, serverConfig.Middleware, serverConfig.Controller.RoleController)
 	routes.UserRoutes(engine, serverConfig.Middleware, serverConfig.Controller.UserController)
-	routes.FamilyRoutes(engine, serverConfig.Middleware, serverConfig.Controller.FamilyController)
+	//routes.FamilyRoutes(engine, serverConfig.Middleware, serverConfig.Controller.FamilyController)
 
 	// Run server
 	log.Println("Starting server on :8080")

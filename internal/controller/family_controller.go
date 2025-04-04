@@ -13,20 +13,22 @@ type FamilyController interface {
 	CreateFamily(c *gin.Context)
 	UpdateFamily(c *gin.Context)
 	AddMemberFamily(c *gin.Context)
+	RemoveMemberFamily(c *gin.Context)
 	AddFamilyMemberPermission(c *gin.Context)
 	RemoveFamilyMemberPermission(c *gin.Context)
+	GetListFamilyMemberPermissions(c *gin.Context)
 	GetFamilyMembers(c *gin.Context)
-	RemoveMemberFamily(c *gin.Context)
 }
 
 type familyController struct {
-	FamilyService       services.FamilyService
-	FamilyMemberService services.FamilyMemberService
-	JWTService          utils.JWTService
+	FamilyService                 services.FamilyService
+	FamilyMemberService           services.FamilyMemberService
+	FamilyMemberPermissionService services.FamilyMemberPermissionService
+	JWTService                    utils.JWTService
 }
 
-func NewFamilyController(serviceFamily services.FamilyService, serviceFamilyMember services.FamilyMemberService, jwtService utils.JWTService) FamilyController {
-	return familyController{FamilyService: serviceFamily, FamilyMemberService: serviceFamilyMember, JWTService: jwtService}
+func NewFamilyController(serviceFamily services.FamilyService, serviceFamilyMember services.FamilyMemberService, serviceFamilyMemberPermission services.FamilyMemberPermissionService, jwtService utils.JWTService) FamilyController {
+	return familyController{FamilyService: serviceFamily, FamilyMemberService: serviceFamilyMember, FamilyMemberPermissionService: serviceFamilyMemberPermission, JWTService: jwtService}
 }
 
 func (f familyController) CreateFamily(c *gin.Context) {
@@ -95,8 +97,8 @@ func (f familyController) AddMemberFamily(c *gin.Context) {
 	response.SendResponse(c, http.StatusOK, "Success", nil, "Member added successfully")
 }
 
-func (f familyController) AddFamilyMemberPermission(c *gin.Context) {
-	var req in.ChangeFamilyMemberPermissionRequest
+func (f familyController) RemoveMemberFamily(c *gin.Context) {
+	var req in.FamilyMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -108,7 +110,29 @@ func (f familyController) AddFamilyMemberPermission(c *gin.Context) {
 		return
 	}
 
-	err := f.FamilyService.AddFamilyMemberPermission(&req, token.ClientID)
+	err := f.FamilyMemberService.RemoveFamilyMember(&req, token.ClientID)
+	if err.Message != "" {
+		response.SendResponse(c, err.Code, err.Error, nil, err.Message)
+		return
+	}
+
+	response.SendResponse(c, http.StatusOK, "Success", nil, "Member removed successfully")
+}
+
+func (f familyController) AddFamilyMemberPermission(c *gin.Context) {
+	var req in.UpdateFamilyMemberPermissionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	token, exist := utils.ExtractTokenClaims(c)
+	if !exist {
+		response.SendResponse(c, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	err := f.FamilyMemberPermissionService.AddFamilyMemberPermissions(&req, token.ClientID)
 	if err.Message != "" {
 		response.SendResponse(c, err.Code, err.Error, nil, err.Message)
 		return
@@ -118,7 +142,7 @@ func (f familyController) AddFamilyMemberPermission(c *gin.Context) {
 }
 
 func (f familyController) RemoveFamilyMemberPermission(c *gin.Context) {
-	var req in.ChangeFamilyMemberPermissionRequest
+	var req in.UpdateFamilyMemberPermissionsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -130,13 +154,35 @@ func (f familyController) RemoveFamilyMemberPermission(c *gin.Context) {
 		return
 	}
 
-	err := f.FamilyService.RemoveFamilyMemberPermission(&req, token.ClientID)
+	err := f.FamilyMemberPermissionService.RemoveFamilyMemberPermissions(&req, token.ClientID)
 	if err.Message != "" {
 		response.SendResponse(c, err.Code, err.Error, nil, err.Message)
 		return
 	}
 
 	response.SendResponse(c, http.StatusOK, "Success", nil, "Permission changed successfully")
+}
+
+func (f familyController) GetListFamilyMemberPermissions(c *gin.Context) {
+	var req in.FamilyMemberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	token, exist := utils.ExtractTokenClaims(c)
+	if !exist {
+		response.SendResponse(c, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	permissions, errs := f.FamilyMemberPermissionService.GetListFamilyMemberPermissions(req, token.ClientID)
+	if errs.Message != "" {
+		response.SendResponse(c, errs.Code, errs.Error, nil, errs.Message)
+		return
+	}
+
+	response.SendResponse(c, http.StatusOK, "Success", permissions, "")
 }
 
 func (f familyController) GetFamilyMembers(c *gin.Context) {
@@ -159,26 +205,4 @@ func (f familyController) GetFamilyMembers(c *gin.Context) {
 	}
 
 	response.SendResponse(c, http.StatusOK, "Success", members, "")
-}
-
-func (f familyController) RemoveMemberFamily(c *gin.Context) {
-	var req in.FamilyMemberRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	token, exist := utils.ExtractTokenClaims(c)
-	if !exist {
-		response.SendResponse(c, http.StatusBadRequest, "Error", nil, "Token not found")
-		return
-	}
-
-	err := f.FamilyMemberService.RemoveFamilyMember(&req, token.ClientID)
-	if err.Message != "" {
-		response.SendResponse(c, err.Code, err.Error, nil, err.Message)
-		return
-	}
-
-	response.SendResponse(c, http.StatusOK, "Success", nil, "Member removed successfully")
 }
