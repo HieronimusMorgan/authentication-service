@@ -12,6 +12,9 @@ const (
 )
 
 const (
+	TableUsersName                  = "users"
+	TableRolesName                  = "roles"
+	TableUserRolesName              = "user_roles"
 	TableFamilyName                 = "family"
 	TableFamilyPermissionName       = "family_permission"
 	TableFamilyMemberPermissionName = "family_member_permission"

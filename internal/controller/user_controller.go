@@ -5,6 +5,8 @@ import (
 	"authentication/internal/services"
 	"authentication/internal/utils"
 	"authentication/package/response"
+	"errors"
+	"github.com/go-playground/validator/v10"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +16,7 @@ type UserController interface {
 	GetProfile(c *gin.Context)
 	UpdateNameUserProfile(c *gin.Context)
 	UpdatePhotoUserProfile(c *gin.Context)
+	UpdateUserSetting(c *gin.Context)
 	DeleteUser(ctx *gin.Context)
 }
 
@@ -86,6 +89,37 @@ func (h userController) UpdatePhotoUserProfile(c *gin.Context) {
 	}
 
 	handleSuccessResponse(c, http.StatusOK, "Profile updated successfully", user)
+}
+
+func (h userController) UpdateUserSetting(c *gin.Context) {
+	var req in.UserSettingsRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		var ve validator.ValidationErrors
+		if errors.As(err, &ve) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":  "Validation failed",
+				"fields": ve.Error(), // or iterate for detailed field errors
+			})
+		} else {
+			handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
+		}
+		return
+	}
+
+	token, exist := utils.ExtractTokenClaims(c)
+	if !exist {
+		response.SendResponse(c, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	errs := h.UserService.UpdateUserSetting(&req, token.ClientID)
+	if errs.Message != "" {
+		response.SendResponse(c, errs.Code, errs.Error, nil, errs.Message)
+		return
+	}
+
+	handleSuccessResponse(c, http.StatusOK, "User settings updated successfully", nil)
 }
 
 func (h userController) DeleteUser(ctx *gin.Context) {

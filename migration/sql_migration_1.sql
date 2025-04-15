@@ -42,6 +42,31 @@ CREATE INDEX idx_users_client_id ON users (client_id);
 CREATE INDEX idx_users_username ON users (username);
 CREATE INDEX idx_users_email ON users (email);
 
+CREATE TABLE user_settings
+(
+    setting_id              SERIAL PRIMARY KEY,
+    user_id                 INT NOT NULL UNIQUE,
+    archived_enabled        BOOLEAN   DEFAULT FALSE,
+    group_invite_disallowed INT[] DEFAULT NULL,
+    group_invite_type       INT       DEFAULT 1,
+    group_invite_disallowed INT[] DEFAULT NULL,
+    created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+);
+CREATE INDEX idx_user_settings_user_id ON user_settings (user_id);
+
+INSERT INTO user_settings (user_id,
+                           archived_enabled,
+                           group_invite_type,
+                           group_invite_disallowed)
+SELECT user_id,
+       FALSE,
+       1,
+       ARRAY['none']
+FROM users
+WHERE user_id NOT IN (SELECT user_id FROM user_settings);
+
 -- CREATE TABLE family
 -- (
 --     family_id   SERIAL PRIMARY KEY,
@@ -349,3 +374,20 @@ CREATE TRIGGER set_updated_at_cron_jobs
     BEFORE UPDATE
     ON cron_jobs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE
+OR REPLACE FUNCTION sync_user_settings()
+RETURNS TRIGGER AS $$
+BEGIN
+INSERT INTO user_settings (user_id)
+VALUES (NEW.user_id);
+RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_sync_user_settings
+    AFTER INSERT
+    ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION sync_user_settings();

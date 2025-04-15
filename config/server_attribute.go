@@ -47,6 +47,7 @@ func NewServerConfig() (*ServerConfig, error) {
 
 	server.initAesEncrypt()
 	server.initRepository()
+	server.initTransactional()
 	server.initServices()
 	server.initController()
 	server.initMiddleware()
@@ -57,17 +58,21 @@ func NewServerConfig() (*ServerConfig, error) {
 // initRepository initializes database access objects (Repository)
 func (s *ServerConfig) initRepository() {
 	s.Repository = Repository{
-		AuthRepository:                   repository.NewAuthRepository(*s.DB),
-		UserRepository:                   repository.NewUserRepository(*s.DB),
-		ResourceRepository:               repository.NewResourceRepository(*s.DB),
-		RoleRepository:                   repository.NewRoleRepository(*s.DB),
-		UserRoleRepository:               repository.NewUserRoleRepository(*s.DB),
-		UserSessionRepository:            repository.NewUserSessionRepository(*s.DB),
-		RoleResourceRepository:           repository.NewRoleResourceRepository(*s.DB),
-		FamilyPermissionRepository:       repository.NewFamilyPermissionRepository(*s.DB),
-		FamilyRepository:                 repository.NewFamilyRepository(*s.DB),
-		FamilyMemberPermissionRepository: repository.NewFamilyMemberPermissionRepository(*s.DB),
-		FamilyMemberRepository:           repository.NewFamilyMemberRepository(*s.DB),
+		AuthRepository:         repository.NewAuthRepository(*s.DB),
+		UserRepository:         repository.NewUserRepository(*s.DB),
+		UserSettingRepository:  repository.NewUserSettingRepository(*s.DB),
+		ResourceRepository:     repository.NewResourceRepository(*s.DB),
+		RoleRepository:         repository.NewRoleRepository(*s.DB),
+		UserRoleRepository:     repository.NewUserRoleRepository(*s.DB),
+		UserSessionRepository:  repository.NewUserSessionRepository(*s.DB),
+		RoleResourceRepository: repository.NewRoleResourceRepository(*s.DB),
+	}
+}
+
+// initTransactional initializes transactional repository
+func (s *ServerConfig) initTransactional() {
+	s.Transactional = Transactional{
+		UserTransactionalRepository: repository.NewUserTransactionalRepository(*s.DB),
 	}
 }
 
@@ -81,36 +86,14 @@ func (s *ServerConfig) initServices() {
 			s.Repository.UserRepository,
 			s.Repository.UserRoleRepository,
 			s.Repository.UserSessionRepository,
+			s.Transactional.UserTransactionalRepository,
 			s.Redis,
 			s.JWTService,
 			s.Encryption.EncryptionService),
-		UserService:        services.NewUserService(s.Repository.UserRepository, s.Redis, s.JWTService, s.Encryption.EncryptionService),
+		UserService:        services.NewUserService(s.Repository.UserRepository, s.Repository.UserSettingRepository, s.Redis, s.JWTService, s.Encryption.EncryptionService),
 		ResourceService:    services.NewResourceService(s.Repository.ResourceRepository, s.Repository.RoleResourceRepository, s.Repository.RoleRepository, s.Repository.UserRepository),
 		RoleService:        services.NewRoleService(s.Repository.RoleRepository, s.Repository.UserRepository),
 		UserSessionService: services.NewUsersSessionService(s.Repository.UserSessionRepository, s.Repository.UserRepository, s.JWTService, s.Redis),
-		FamilyService: services.NewFamilyService(s.Repository.UserRepository,
-			s.Repository.FamilyPermissionRepository,
-			s.Repository.FamilyRepository,
-			s.Repository.FamilyMemberPermissionRepository,
-			s.Repository.FamilyMemberRepository,
-			s.Redis,
-			s.JWTService,
-			s.Encryption.EncryptionService),
-		FamilyMemberService: services.NewFamilyMemberService(s.Repository.UserRepository,
-			s.Repository.FamilyPermissionRepository,
-			s.Repository.FamilyRepository,
-			s.Repository.FamilyMemberPermissionRepository,
-			s.Repository.FamilyMemberRepository,
-			s.Redis,
-			s.JWTService,
-			s.Encryption.EncryptionService),
-		FamilyMemberPermissionService: services.NewFamilyMemberPermissionService(s.Repository.UserRepository,
-			s.Repository.FamilyRepository,
-			s.Repository.FamilyMemberRepository,
-			s.Repository.FamilyPermissionRepository,
-			s.Repository.FamilyMemberPermissionRepository,
-			s.Redis,
-			s.JWTService),
 	}
 }
 
@@ -126,7 +109,6 @@ func (s *ServerConfig) initController() {
 		UserController:     controller.NewUserController(s.Services.UserService, s.JWTService),
 		ResourceController: controller.NewResourceController(s.Services.ResourceService, s.JWTService),
 		RoleController:     controller.NewRoleController(s.Services.RoleService, s.JWTService),
-		FamilyController:   controller.NewFamilyController(s.Services.FamilyService, s.Services.FamilyMemberService, s.Services.FamilyMemberPermissionService, s.JWTService),
 	}
 }
 

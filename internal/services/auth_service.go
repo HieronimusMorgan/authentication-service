@@ -50,16 +50,17 @@ type AuthService interface {
 }
 
 type authService struct {
-	AuthRepository         repository.AuthRepository
-	ResourceRepository     repository.ResourceRepository
-	RoleRepository         repository.RoleRepository
-	RoleResourceRepository repository.RoleResourceRepository
-	UserRepository         repository.UserRepository
-	UserRoleRepository     repository.UserRoleRepository
-	UserSessionRepository  repository.UserSessionRepository
-	RedisService           utils.RedisService
-	JWTService             utils.JWTService
-	Encryption             utils.Encryption
+	AuthRepository            repository.AuthRepository
+	ResourceRepository        repository.ResourceRepository
+	RoleRepository            repository.RoleRepository
+	RoleResourceRepository    repository.RoleResourceRepository
+	UserRepository            repository.UserRepository
+	UserRoleRepository        repository.UserRoleRepository
+	UserSessionRepository     repository.UserSessionRepository
+	UserTransactionRepository repository.UserTransactionalRepository
+	RedisService              utils.RedisService
+	JWTService                utils.JWTService
+	Encryption                utils.Encryption
 }
 
 func NewAuthService(
@@ -70,20 +71,22 @@ func NewAuthService(
 	userRepo repository.UserRepository,
 	userRoleRepo repository.UserRoleRepository,
 	userSessionRepo repository.UserSessionRepository,
+	userTransactionRepo repository.UserTransactionalRepository,
 	redis utils.RedisService,
 	jwtService utils.JWTService,
 	Encryption utils.Encryption) AuthService {
 	return authService{
-		AuthRepository:         authRepo,
-		ResourceRepository:     resourceRepo,
-		RoleRepository:         roleRepo,
-		RoleResourceRepository: roleResourceRepo,
-		UserRepository:         userRepo,
-		UserRoleRepository:     userRoleRepo,
-		UserSessionRepository:  userSessionRepo,
-		RedisService:           redis,
-		JWTService:             jwtService,
-		Encryption:             Encryption,
+		AuthRepository:            authRepo,
+		ResourceRepository:        resourceRepo,
+		RoleRepository:            roleRepo,
+		RoleResourceRepository:    roleResourceRepo,
+		UserRepository:            userRepo,
+		UserRoleRepository:        userRoleRepo,
+		UserSessionRepository:     userSessionRepo,
+		UserTransactionRepository: userTransactionRepo,
+		RedisService:              redis,
+		JWTService:                jwtService,
+		Encryption:                Encryption,
 	}
 }
 
@@ -233,25 +236,10 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 		UpdatedBy: "system",
 	}
 
-	if err := s.UserRepository.RegisterUser(&user); err != nil {
+	if err := s.UserTransactionRepository.RegistrationUser(user); err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
 			Message: "Unable to register user",
-			Error:   err.Error(),
-		}
-	}
-
-	userRole := &models.UserRole{
-		UserID:    user.UserID,
-		RoleID:    role.RoleID,
-		CreatedBy: "system",
-		UpdatedBy: "system",
-	}
-
-	if err := s.UserRoleRepository.RegisterUserRole(&userRole); err != nil {
-		return out.RegisterResponse{}, response.ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Unable to register user role",
 			Error:   err.Error(),
 		}
 	}
