@@ -58,6 +58,7 @@ type authService struct {
 	UserRoleRepository        repository.UserRoleRepository
 	UserSessionRepository     repository.UserSessionRepository
 	UserTransactionRepository repository.UserTransactionalRepository
+	UserSettingRepository     repository.UserSettingRepository
 	RedisService              utils.RedisService
 	JWTService                utils.JWTService
 	Encryption                utils.Encryption
@@ -72,6 +73,7 @@ func NewAuthService(
 	userRoleRepo repository.UserRoleRepository,
 	userSessionRepo repository.UserSessionRepository,
 	userTransactionRepo repository.UserTransactionalRepository,
+	userSetting repository.UserSettingRepository,
 	redis utils.RedisService,
 	jwtService utils.JWTService,
 	Encryption utils.Encryption) AuthService {
@@ -84,6 +86,7 @@ func NewAuthService(
 		UserRoleRepository:        userRoleRepo,
 		UserSessionRepository:     userSessionRepo,
 		UserTransactionRepository: userTransactionRepo,
+		UserSettingRepository:     userSetting,
 		RedisService:              redis,
 		JWTService:                jwtService,
 		Encryption:                Encryption,
@@ -267,6 +270,23 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 		resourceName = append(resourceName, res.Name)
 	}
 
+	userSetting, err := s.UserSettingRepository.GetUserSettingByUserID(user.UserID)
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User setting not found",
+			Error:   err.Error(),
+		}
+	}
+
+	userSettingModel := out.UserSettingResponse{
+		SettingID:             userSetting.SettingID,
+		ArchivedEnabled:       userSetting.ArchivedEnabled,
+		GroupInviteType:       userSetting.GroupInviteType,
+		GroupInviteDisallowed: userSetting.GroupInviteDisallowed,
+		ArchivedExceptions:    userSetting.ArchivedExceptions,
+	}
+
 	token, err := s.JWTService.GenerateToken(*user, resourceName, role.Name)
 	if err != nil {
 		return out.RegisterResponse{}, response.ErrorResponse{
@@ -288,6 +308,7 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 		PhoneNumber:    phoneNumber,
 		Role:           role.Name,
 		Resource:       resourceName,
+		UserSetting:    userSettingModel,
 		ProfilePicture: user.ProfilePicture,
 		Token:          token.AccessToken,
 		RefreshToken:   token.RefreshToken,
@@ -353,6 +374,23 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		resourceName = append(resourceName, res.Name)
 	}
 
+	userSetting, err := s.UserSettingRepository.GetUserSettingByUserID(user.UserID)
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User setting not found",
+			Error:   err.Error(),
+		}
+	}
+
+	userSettingModel := out.UserSettingResponse{
+		SettingID:             userSetting.SettingID,
+		ArchivedEnabled:       userSetting.ArchivedEnabled,
+		GroupInviteType:       userSetting.GroupInviteType,
+		GroupInviteDisallowed: userSetting.GroupInviteDisallowed,
+		ArchivedExceptions:    userSetting.ArchivedExceptions,
+	}
+
 	token, err := s.JWTService.GenerateToken(*user, resourceName, role.Name)
 	if err != nil {
 		return nil, response.ErrorResponse{
@@ -380,6 +418,7 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		LastName:       user.LastName,
 		PhoneNumber:    phoneNumber,
 		ProfilePicture: user.ProfilePicture,
+		UserSetting:    userSettingModel,
 		Token:          token.AccessToken,
 		RefreshToken:   token.RefreshToken,
 	}

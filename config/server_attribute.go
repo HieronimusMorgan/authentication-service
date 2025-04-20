@@ -87,6 +87,7 @@ func (s *ServerConfig) initServices() {
 			s.Repository.UserRoleRepository,
 			s.Repository.UserSessionRepository,
 			s.Transactional.UserTransactionalRepository,
+			s.Repository.UserSettingRepository,
 			s.Redis,
 			s.JWTService,
 			s.Encryption.EncryptionService),

@@ -279,7 +279,6 @@ INSERT INTO resources (name, description, created_at, created_by)
 VALUES ('resource', 'Description of the resource', CURRENT_TIMESTAMP, 'system'),
        ('system', 'Operations for managing the system', CURRENT_TIMESTAMP, 'system'),
        ('auth', 'Authentication-related operations', CURRENT_TIMESTAMP, 'system'),
-       ('master', 'Master data management operations', CURRENT_TIMESTAMP, 'system'),
        ('asset', 'Asset management operations', CURRENT_TIMESTAMP, 'system');
 
 INSERT INTO role_resources (role_id, resource_id, created_at, created_by)

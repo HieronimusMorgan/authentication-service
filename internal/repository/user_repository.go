@@ -3,11 +3,13 @@ package repository
 import (
 	"authentication/internal/dto/out"
 	"authentication/internal/models"
+	"errors"
 	"gorm.io/gorm"
 )
 
 type UserRepository interface {
 	RegisterUser(user **models.Users) error
+	CheckClientID(clientID string) bool
 	GetUserByUsername(username string) (*models.Users, error)
 	GetUserByEmail(email string) (*models.Users, error)
 	GetUserByID(id uint) (*models.Users, error)
@@ -43,6 +45,17 @@ func (r userRepository) RegisterUser(user **models.Users) error {
 		return err
 	}
 	return nil
+}
+
+func (r userRepository) CheckClientID(clientID string) bool {
+	var user models.Users
+	if err := r.db.Where("client_id = ?", clientID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false
+		}
+		return false
+	}
+	return true
 }
 
 func (r userRepository) GetUserByUsername(username string) (*models.Users, error) {

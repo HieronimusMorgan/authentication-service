@@ -37,11 +37,13 @@ func NewJWTService(jwtSecret string) JWTService {
 
 // GenerateToken generates a new JWT token
 func (j jwtService) GenerateToken(user models.Users, resourceName []string, roleName string) (models.TokenDetails, error) {
+	var clientID string
+	clientID = GenerateClientID()
 	td := &models.TokenDetails{
 		AtExpires:   time.Now().Add(time.Hour * 24).Unix(),
 		AccessUUID:  uuid.New().String(),
 		RtExpires:   time.Now().Add(time.Hour * 24 * 7).Unix(),
-		RefreshUUID: GenerateClientID(),
+		RefreshUUID: clientID,
 	}
 
 	claims := jwt.MapClaims{
@@ -62,7 +64,7 @@ func (j jwtService) GenerateToken(user models.Users, resourceName []string, role
 		return models.TokenDetails{}, err
 	}
 
-	td.RefreshToken = GenerateClientID()
+	td.RefreshToken = clientID
 
 	return *td, nil
 }

@@ -21,7 +21,10 @@ func CheckPasswordHash(password, hash string) bool {
 
 func GenerateClientID() string {
 	randomBytes := make([]byte, 16)
-	rand.Read(randomBytes)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return ""
+	}
 	randomPart := hex.EncodeToString(randomBytes)
 	return randomPart
 }
