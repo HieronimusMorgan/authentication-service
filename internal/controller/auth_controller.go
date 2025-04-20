@@ -23,6 +23,7 @@ type AuthController interface {
 	RegisterInternalToken(c *gin.Context)
 	UpdateRole(ctx *gin.Context)
 	GetListUser(ctx *gin.Context)
+	GetUserByID(ctx *gin.Context)
 	ChangePassword(ctx *gin.Context)
 	Logout(ctx *gin.Context)
 }
@@ -322,6 +323,28 @@ func (h authController) GetListUser(ctx *gin.Context) {
 	}
 
 	response.SendResponse(ctx, 200, "List user retrieved successfully", users, nil)
+}
+
+func (h authController) GetUserByID(ctx *gin.Context) {
+	userID, err := utils.ConvertToUint(ctx.Param("id"))
+	if err != nil {
+		response.SendResponse(ctx, 400, "User ID must be a number", nil, err)
+		return
+	}
+
+	token, exist := utils.ExtractTokenClaims(ctx)
+	if !exist {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	user, errs := h.AuthService.GetUserByID(userID, token.ClientID)
+	if errs != nil {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, errs)
+		return
+	}
+
+	response.SendResponse(ctx, 200, "User retrieved successfully", user, nil)
 }
 
 func (h authController) ChangePassword(ctx *gin.Context) {

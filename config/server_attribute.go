@@ -65,7 +65,7 @@ func (s *ServerConfig) initRepository() {
 		RoleRepository:         repository.NewRoleRepository(*s.DB),
 		UserRoleRepository:     repository.NewUserRoleRepository(*s.DB),
 		UserSessionRepository:  repository.NewUserSessionRepository(*s.DB),
-		RoleResourceRepository: repository.NewRoleResourceRepository(*s.DB),
+		UserResourceRepository: repository.NewUserResourceRepository(*s.DB),
 	}
 }
 
@@ -82,7 +82,7 @@ func (s *ServerConfig) initServices() {
 		AuthService: services.NewAuthService(s.Repository.AuthRepository,
 			s.Repository.ResourceRepository,
 			s.Repository.RoleRepository,
-			s.Repository.RoleResourceRepository,
+			s.Repository.UserResourceRepository,
 			s.Repository.UserRepository,
 			s.Repository.UserRoleRepository,
 			s.Repository.UserSessionRepository,
@@ -92,7 +92,7 @@ func (s *ServerConfig) initServices() {
 			s.JWTService,
 			s.Encryption.EncryptionService),
 		UserService:        services.NewUserService(s.Repository.UserRepository, s.Repository.UserSettingRepository, s.Redis, s.JWTService, s.Encryption.EncryptionService),
-		ResourceService:    services.NewResourceService(s.Repository.ResourceRepository, s.Repository.RoleResourceRepository, s.Repository.RoleRepository, s.Repository.UserRepository),
+		ResourceService:    services.NewResourceService(s.Repository.ResourceRepository, s.Repository.UserResourceRepository, s.Repository.RoleRepository, s.Repository.UserRepository),
 		RoleService:        services.NewRoleService(s.Repository.RoleRepository, s.Repository.UserRepository),
 		UserSessionService: services.NewUsersSessionService(s.Repository.UserSessionRepository, s.Repository.UserRepository, s.JWTService, s.Redis),
 	}

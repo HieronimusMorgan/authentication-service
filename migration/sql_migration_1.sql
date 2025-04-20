@@ -46,8 +46,6 @@ CREATE TABLE user_settings
 (
     setting_id              SERIAL PRIMARY KEY,
     user_id                 INT NOT NULL UNIQUE,
-    archived_enabled        BOOLEAN   DEFAULT FALSE,
-    group_invite_disallowed INT[] DEFAULT NULL,
     group_invite_type       INT       DEFAULT 1,
     group_invite_disallowed INT[] DEFAULT NULL,
     created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -57,113 +55,11 @@ CREATE TABLE user_settings
 CREATE INDEX idx_user_settings_user_id ON user_settings (user_id);
 
 INSERT INTO user_settings (user_id,
-                           archived_enabled,
-                           group_invite_type,
-                           group_invite_disallowed)
+                           group_invite_type)
 SELECT user_id,
-       FALSE,
-       1,
-       ARRAY['none']
+       1
 FROM users
 WHERE user_id NOT IN (SELECT user_id FROM user_settings);
-
--- CREATE TABLE family
--- (
---     family_id   SERIAL PRIMARY KEY,
---     family_name VARCHAR(255) NOT NULL,
---     owner_id    INT          NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
---     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     created_by  VARCHAR(255),
---     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     updated_by  VARCHAR(255),
---     deleted_at  TIMESTAMP NULL,
---     deleted_by  VARCHAR(255)
--- );
---
--- CREATE TABLE family_invitation_status
--- (
---     status_id   SERIAL PRIMARY KEY,
---     status_name VARCHAR(50) NOT NULL UNIQUE,
---     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     created_by  VARCHAR(255),
---     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     updated_by  VARCHAR(255),
---     deleted_at  TIMESTAMP NULL,
---     deleted_by  VARCHAR(255)
--- );
---
--- -- Insert default invitation statuses
--- INSERT INTO family_invitation_status (status_name)
--- VALUES ('Pending'),
---        ('Accepted'),
---        ('Rejected');
---
--- CREATE TABLE family_invitation
--- (
---     invitation_id    SERIAL PRIMARY KEY,
---     family_id        INT NOT NULL REFERENCES family (family_id) ON DELETE CASCADE,
---     sender_user_id   INT NOT NULL REFERENCES users (user_id),
---     receiver_user_id INT NOT NULL REFERENCES users (user_id),
---     status_id        INT NOT NULL REFERENCES family_invitation_status (status_id),
---     invited_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     responded_at     TIMESTAMP DEFAULT NULL,
---     UNIQUE (family_id, receiver_user_id)
--- );
---
--- CREATE INDEX idx_family_invitation_sender_user_id ON family_invitation (sender_user_id);
--- CREATE INDEX idx_family_invitation_receiver_user_id ON family_invitation (receiver_user_id);
--- CREATE INDEX idx_family_invitation_status_id ON family_invitation (status_id);
---
--- CREATE TABLE family_permission
--- (
---     permission_id   SERIAL PRIMARY KEY,
---     permission_name VARCHAR(100) UNIQUE NOT NULL,
---     description     TEXT,
---     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     created_by      VARCHAR(255),
---     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     updated_by      VARCHAR(255),
---     deleted_at      TIMESTAMP NULL,
---     deleted_by      VARCHAR(255)
--- );
---
--- -- Insert default family_permission
--- INSERT INTO family_permission (permission_name, description)
--- VALUES ('Admin', 'Full control over family members and assets'),
---        ('Manage', 'Manage family members and permissions'),
---        ('Read-Write', 'Read and Write access to assets'),
---        ('Read', 'Read/View assets');
---
--- CREATE TABLE family_member_permission
--- (
---     family_id     INT REFERENCES family (family_id) ON DELETE CASCADE,
---     user_id       INT REFERENCES users (user_id) ON DELETE CASCADE,
---     permission_id INT REFERENCES family_permission (permission_id) ON DELETE CASCADE,
---     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     created_by    VARCHAR(255),
---     PRIMARY KEY (family_id, user_id, permission_id)
--- );
---
--- CREATE INDEX idx_fmp_user ON family_member_permission (user_id);
--- CREATE INDEX idx_fmp_family ON family_member_permission (family_id);
--- CREATE INDEX idx_fmp_permission ON family_member_permission (permission_id);
---
--- CREATE TABLE family_member
--- (
---     family_id  INT REFERENCES family (family_id) ON DELETE CASCADE,
---     user_id    INT REFERENCES users (user_id) ON DELETE CASCADE,
---     joined_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     created_by VARCHAR(255),
---     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     updated_by VARCHAR(255),
---     deleted_at TIMESTAMP NULL,
---     deleted_by VARCHAR(255),
---     PRIMARY KEY (family_id, user_id)
--- );
---
--- CREATE INDEX idx_family_member_family_id ON family_member (family_id);
--- CREATE INDEX idx_family_member_user_id ON family_member (user_id);
 
 -- Resources Table
 CREATE TABLE resources
@@ -178,23 +74,6 @@ CREATE TABLE resources
     deleted_at  TIMESTAMP NULL,
     deleted_by  VARCHAR(255)
 );
-
--- RoleResource Table
-CREATE TABLE role_resources
-(
-    role_id     INT NOT NULL REFERENCES roles (role_id) ON DELETE CASCADE,
-    resource_id INT NOT NULL REFERENCES resources (resource_id) ON DELETE CASCADE,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by  VARCHAR(255),
-    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by  VARCHAR(255),
-    deleted_at  TIMESTAMP NULL,
-    deleted_by  VARCHAR(255),
-    PRIMARY KEY (role_id, resource_id)
-);
-
-CREATE INDEX idx_role_resources_role_id ON role_resources (role_id);
-CREATE INDEX idx_role_resources_resource_id ON role_resources (resource_id);
 
 -- UserRole Table
 CREATE TABLE user_roles
@@ -212,6 +91,23 @@ CREATE TABLE user_roles
 
 CREATE INDEX idx_user_roles_user_id ON user_roles (user_id);
 CREATE INDEX idx_user_roles_role_id ON user_roles (role_id);
+
+-- UserResources Table
+CREATE TABLE user_resources
+(
+    user_id     INT NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+    resource_id INT NOT NULL REFERENCES resources (resource_id) ON DELETE CASCADE,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by  VARCHAR(255),
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by  VARCHAR(255),
+    deleted_at  TIMESTAMP NULL,
+    deleted_by  VARCHAR(255),
+    PRIMARY KEY (user_id, resource_id)
+);
+
+CREATE INDEX idx_user_resources_user_id ON user_resources (user_id);
+CREATE INDEX idx_user_resources_resource_id ON user_resources (resource_id);
 
 CREATE TABLE internal_tokens
 (
@@ -279,31 +175,8 @@ INSERT INTO resources (name, description, created_at, created_by)
 VALUES ('resource', 'Description of the resource', CURRENT_TIMESTAMP, 'system'),
        ('system', 'Operations for managing the system', CURRENT_TIMESTAMP, 'system'),
        ('auth', 'Authentication-related operations', CURRENT_TIMESTAMP, 'system'),
-       ('asset', 'Asset management operations', CURRENT_TIMESTAMP, 'system');
-
-INSERT INTO role_resources (role_id, resource_id, created_at, created_by)
-SELECT (SELECT role_id FROM roles WHERE name = 'Super Admin') AS role_id,
-       resource_id,
-       CURRENT_TIMESTAMP,
-       'system'
-FROM resources;
-
-INSERT INTO role_resources (role_id, resource_id, created_at, created_by)
-VALUES ((SELECT role_id FROM roles WHERE name = 'Admin'),
-        (SELECT resource_id FROM resources WHERE name = 'resource'),
-        CURRENT_TIMESTAMP, 'system'),
-       ((SELECT role_id FROM roles WHERE name = 'Admin'), (SELECT resource_id FROM resources WHERE name = 'auth'),
-        CURRENT_TIMESTAMP, 'system'),
-       ((SELECT role_id FROM roles WHERE name = 'Admin'), (SELECT resource_id FROM resources WHERE name = 'master'),
-        CURRENT_TIMESTAMP, 'system'),
-       ((SELECT role_id FROM roles WHERE name = 'Admin'), (SELECT resource_id FROM resources WHERE name = 'asset'),
-        CURRENT_TIMESTAMP, 'system');
-
-INSERT INTO role_resources (role_id, resource_id, created_at, created_by)
-VALUES ((SELECT role_id FROM roles WHERE name = 'User'), (SELECT resource_id FROM resources WHERE name = 'auth'),
-        CURRENT_TIMESTAMP, 'system'),
-       ((SELECT role_id FROM roles WHERE name = 'User'), (SELECT resource_id FROM resources WHERE name = 'asset'),
-        CURRENT_TIMESTAMP, 'system');
+       ('asset', 'Asset management operations', CURRENT_TIMESTAMP, 'system'),
+       ('asset-group', 'Asset group management operations', CURRENT_TIMESTAMP, 'system');
 
 INSERT INTO users (client_id, username, password, first_name, last_name, full_name, phone_number, email,
                    profile_picture,
@@ -327,6 +200,16 @@ VALUES ((SELECT user_id FROM users WHERE username = 'super_admin'), -- Super Adm
         CURRENT_TIMESTAMP, -- Current timestamp
         'system' -- Created by system
        );
+
+INSERT INTO user_resources (user_id, resource_id, created_at, created_by)
+SELECT u.user_id,
+       r.resource_id,
+       CURRENT_TIMESTAMP,
+       'system'
+FROM users u
+         JOIN
+     resources r ON r.name IN ('resource', 'system', 'auth', 'asset', 'asset-group')
+WHERE u.username = 'super_admin';
 
 -- Function to update updated_at column
 CREATE
@@ -353,9 +236,9 @@ CREATE TRIGGER set_updated_at_resources
     BEFORE UPDATE
     ON resources
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER set_updated_at_role_resources
+CREATE TRIGGER set_updated_at_user_resources
     BEFORE UPDATE
-    ON role_resources
+    ON user_resources
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER set_updated_at_user_roles
     BEFORE UPDATE
@@ -390,3 +273,14 @@ CREATE TRIGGER trg_sync_user_settings
     ON users
     FOR EACH ROW
     EXECUTE FUNCTION sync_user_settings();
+
+-- Allow access to the public schema
+GRANT
+USAGE
+ON
+SCHEMA
+public TO replicator;
+-- Allow SELECT on the users table
+GRANT SELECT ON TABLE public.users TO replicator;
+-- Allow SELECT on the user_settings table
+GRANT SELECT ON TABLE public.user_settings TO replicator;

@@ -17,7 +17,6 @@ type UserSettingRepository interface {
 
 	// Update
 	UpdateUserSetting(userSetting *models.UserSetting) error
-	UpdateArchivedStatus(userID uint, archivedEnabled bool) error
 	UpdateGroupInviteTypeSettings(userID uint, inviteType int) error
 	UpdateGroupInviteSettings(userID uint, inviteType int, disallowed []string) error
 
@@ -74,12 +73,6 @@ func (r *userSettingRepository) GetAllUserSettings() ([]models.UserSetting, erro
 
 func (r *userSettingRepository) UpdateUserSetting(userSetting *models.UserSetting) error {
 	return r.db.Save(userSetting).Error
-}
-
-func (r *userSettingRepository) UpdateArchivedStatus(userID uint, archivedEnabled bool) error {
-	return r.db.Model(&models.UserSetting{}).
-		Where("user_id = ?", userID).
-		Update("archived_enabled", archivedEnabled).Error
 }
 
 func (r *userSettingRepository) UpdateGroupInviteTypeSettings(userID uint, inviteType int) error {

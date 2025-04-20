@@ -50,10 +50,8 @@ func (r resourceRepository) GetResourceByUserID(userID uint) (*[]models.Resource
 		FROM "resources" res
 		WHERE EXISTS (
 			SELECT 1
-			FROM "role_resources" rr
-			JOIN "user_roles" ur 
-				ON rr.role_id = ur.role_id
-			WHERE ur.user_id = ? 
+			FROM "user_resources" rr
+			WHERE rr.user_id = ? 
 				AND rr.resource_id = res.resource_id
 		);
 	`

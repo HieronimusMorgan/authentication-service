@@ -8,8 +8,6 @@ import (
 type UserSetting struct {
 	SettingID             uint          `gorm:"primaryKey;column:setting_id"`
 	UserID                uint          `gorm:"uniqueIndex;not null;column:user_id"`
-	ArchivedEnabled       bool          `gorm:"column:archived_enabled;default:false"`
-	ArchivedExceptions    pq.Int32Array `gorm:"type:int[];column:archived_exceptions"`
 	GroupInviteType       int           `gorm:"column:group_invite_type;default:1"`
 	GroupInviteDisallowed pq.Int32Array `gorm:"type:int[];column:group_invite_disallowed;default:{none}"`
 	CreatedAt             time.Time     `gorm:"column:created_at;autoCreateTime"`

@@ -12,29 +12,30 @@ type ResourceService interface {
 	AddResource(name *string, description *string, clientID string) (interface{}, error)
 	UpdateResource(resourceID uint, name *string, description *string, clientID string) (interface{}, error)
 	GetResources(clientID string) (interface{}, error)
-	AssignResourceToRole(roleID uint, resourceID uint, clientID string) (interface{}, error)
+	AssignUserResource(userID uint, resourceID uint, clientID string) (interface{}, error)
+	RemoveAssignUserResource(userID uint, resourceID uint, clientID string) error
 	GetResourceById(resourceID uint, clientID string) (interface{}, error)
 	DeleteResourceById(resourceID uint, clientID string) error
 	GetResourceUserById(resourceID uint, clientID string) (interface{}, error)
-	GetResourceRoles(clientID string) (interface{}, error)
+	GetUserResources(clientID string) (interface{}, error)
 }
 
 type resourceService struct {
 	ResourceRepository     repository.ResourceRepository
-	RoleResourceRepository repository.RoleResourceRepository
+	UserResourceRepository repository.UserResourceRepository
 	RoleRepository         repository.RoleRepository
 	UserRepository         repository.UserRepository
 }
 
 func NewResourceService(
 	resourceRepo repository.ResourceRepository,
-	roleResourceRepo repository.RoleResourceRepository,
+	roleResourceRepo repository.UserResourceRepository,
 	roleRepo repository.RoleRepository,
 	userRepo repository.UserRepository,
 ) ResourceService {
 	return resourceService{
 		ResourceRepository:     resourceRepo,
-		RoleResourceRepository: roleResourceRepo,
+		UserResourceRepository: roleResourceRepo,
 		RoleRepository:         roleRepo,
 		UserRepository:         userRepo,
 	}
@@ -140,7 +141,7 @@ func (s resourceService) GetResources(clientID string) (interface{}, error) {
 	return resources, nil
 }
 
-func (s resourceService) AssignResourceToRole(roleID uint, resourceID uint, clientID string) (interface{}, error) {
+func (s resourceService) AssignUserResource(userID uint, resourceID uint, clientID string) (interface{}, error) {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
@@ -156,24 +157,53 @@ func (s resourceService) AssignResourceToRole(roleID uint, resourceID uint, clie
 		return nil, err
 	}
 
-	var roleResource = &models.RoleResource{
-		RoleID:     roleID,
+	var userResource = models.UserResource{
+		UserID:     userID,
 		ResourceID: resourceID,
 		CreatedBy:  user.FullName,
 		UpdatedBy:  user.FullName,
 	}
 
-	err = s.RoleResourceRepository.RegisterRoleResource(&roleResource)
+	err = s.UserResourceRepository.RegisterUserResource(userResource)
 	if err != nil {
 		return nil, err
 	}
 	return struct {
-		RoleID     uint
+		UserID     uint
 		ResourceID uint
 	}{
-		RoleID:     roleResource.RoleID,
-		ResourceID: roleResource.ResourceID,
+		UserID:     userResource.UserID,
+		ResourceID: userResource.ResourceID,
 	}, nil
+}
+
+func (s resourceService) RemoveAssignUserResource(userID uint, resourceID uint, clientID string) error {
+	user, err := s.UserRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return err
+	}
+
+	err = s.checkUserIsAdmin(user)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.ResourceRepository.GetResourceByID(resourceID)
+	if err != nil {
+		return err
+	}
+
+	userResource, err := s.UserResourceRepository.GetUserResourceByUserIDAndResourceID(userID, resourceID)
+	if err != nil {
+		return err
+	}
+
+	err = s.UserResourceRepository.DeleteUserResource(userResource)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s resourceService) GetResourceById(resourceID uint, clientID string) (interface{}, error) {
@@ -288,7 +318,7 @@ func (s resourceService) GetResourceUserById(resourceID uint, clientID string) (
 	return data, nil
 }
 
-func (s resourceService) GetResourceRoles(clientID string) (interface{}, error) {
+func (s resourceService) GetUserResources(clientID string) (interface{}, error) {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
@@ -307,41 +337,51 @@ func (s resourceService) GetResourceRoles(clientID string) (interface{}, error) 
 	var resourceResponses []struct {
 		ResourceID   uint
 		ResourceName string
-		Roles        []struct {
-			RoleID   uint
-			RoleName string
+		User         []struct {
+			UserID    uint
+			Username  string
+			FirstName string
+			LastName  string
 		}
 	}
 
 	for _, resource := range *resources {
-		roles, err := s.RoleRepository.GetAllRolesByResourceId(&resource)
+		users, err := s.UserRepository.GetAllUsersByResourceId(&resource)
 		if err != nil {
 			return nil, err
 		}
-		var roleResponses []struct {
-			RoleID   uint
-			RoleName string
+		var userResponse []struct {
+			UserID    uint
+			Username  string
+			FirstName string
+			LastName  string
 		}
-		for _, role := range *roles {
-			roleResponses = append(roleResponses, struct {
-				RoleID   uint
-				RoleName string
+		for _, u := range *users {
+			userResponse = append(userResponse, struct {
+				UserID    uint
+				Username  string
+				FirstName string
+				LastName  string
 			}{
-				RoleID:   role.RoleID,
-				RoleName: role.Name,
+				UserID:    u.UserID,
+				Username:  u.Username,
+				FirstName: u.FirstName,
+				LastName:  u.LastName,
 			})
 		}
 		resourceResponses = append(resourceResponses, struct {
 			ResourceID   uint
 			ResourceName string
-			Roles        []struct {
-				RoleID   uint
-				RoleName string
+			User         []struct {
+				UserID    uint
+				Username  string
+				FirstName string
+				LastName  string
 			}
 		}{
 			ResourceID:   resource.ResourceID,
 			ResourceName: resource.Name,
-			Roles:        roleResponses,
+			User:         userResponse,
 		})
 	}
 

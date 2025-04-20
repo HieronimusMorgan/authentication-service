@@ -12,9 +12,10 @@ func ResourceRoutes(r *gin.Engine, middleware config.Middleware, resourceControl
 	{
 		protected.POST("/add", resourceController.AddResource)
 		protected.POST("/update/:id", resourceController.UpdateResource)
-		protected.POST("/assign-role", resourceController.AssignResourceToRole)
+		protected.POST("/assign-user-resources", resourceController.AssignUserResource)
+		protected.POST("/remove-user-resources", resourceController.RemoveAssignUserResource)
 		protected.GET("", resourceController.GetResources)
-		protected.GET("/roles", resourceController.GetResourceRoles)
+		protected.GET("/users", resourceController.GetUserResources)
 		protected.GET("/:id", resourceController.GetResourcesById)
 		protected.GET("/user/:id", resourceController.GetResourceUserById)
 		protected.DELETE("/:id", resourceController.DeleteResourceById)

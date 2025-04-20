@@ -31,6 +31,7 @@ func AuthRoutes(r *gin.Engine, middleware config.Middleware, authController cont
 	admin.Use(middleware.AdminMiddleware.Handler())
 	{
 		admin.GET("/users", authController.GetListUser)
+		admin.GET("/users/:id", authController.GetUserByID)
 		admin.POST("/user/update-role/:id", authController.UpdateRole)
 	}
 }

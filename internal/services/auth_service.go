@@ -7,6 +7,7 @@ import (
 	"authentication/internal/repository"
 	"authentication/internal/utils"
 	"authentication/package/response"
+	"errors"
 	"github.com/google/uuid"
 	"log"
 	"net/http"
@@ -17,6 +18,10 @@ import (
 type AuthService interface {
 	Register(req *in.RegisterRequest, deviceID string) (out.RegisterResponse, response.ErrorResponse)
 	Login(req *in.LoginRequest, deviceID string) (interface{}, response.ErrorResponse)
+	ReLogin(req struct {
+		UserID       uint   `json:"user_id" binding:"required"`
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}) (interface{}, response.ErrorResponse)
 	LoginPhoneNumber(req *in.LoginPhoneNumber, deviceID string) (interface{}, response.ErrorResponse)
 	ChangeDeviceID(s *struct {
 		PhoneNumber string `json:"phone_number" binding:"required"`
@@ -47,13 +52,14 @@ type AuthService interface {
 		Email   string `json:"email" binding:"required"`
 		PinCode string `json:"pin_code" binding:"required"`
 	}, clientID string) response.ErrorResponse
+	GetUserByID(userID uint, clientID string) (interface{}, error)
 }
 
 type authService struct {
 	AuthRepository            repository.AuthRepository
 	ResourceRepository        repository.ResourceRepository
 	RoleRepository            repository.RoleRepository
-	RoleResourceRepository    repository.RoleResourceRepository
+	UserResourceRepository    repository.UserResourceRepository
 	UserRepository            repository.UserRepository
 	UserRoleRepository        repository.UserRoleRepository
 	UserSessionRepository     repository.UserSessionRepository
@@ -68,7 +74,7 @@ func NewAuthService(
 	authRepo repository.AuthRepository,
 	resourceRepo repository.ResourceRepository,
 	roleRepo repository.RoleRepository,
-	roleResourceRepo repository.RoleResourceRepository,
+	roleResourceRepo repository.UserResourceRepository,
 	userRepo repository.UserRepository,
 	userRoleRepo repository.UserRoleRepository,
 	userSessionRepo repository.UserSessionRepository,
@@ -81,7 +87,7 @@ func NewAuthService(
 		AuthRepository:            authRepo,
 		ResourceRepository:        resourceRepo,
 		RoleRepository:            roleRepo,
-		RoleResourceRepository:    roleResourceRepo,
+		UserResourceRepository:    roleResourceRepo,
 		UserRepository:            userRepo,
 		UserRoleRepository:        userRoleRepo,
 		UserSessionRepository:     userSessionRepo,
@@ -281,10 +287,8 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 
 	userSettingModel := out.UserSettingResponse{
 		SettingID:             userSetting.SettingID,
-		ArchivedEnabled:       userSetting.ArchivedEnabled,
 		GroupInviteType:       userSetting.GroupInviteType,
 		GroupInviteDisallowed: userSetting.GroupInviteDisallowed,
-		ArchivedExceptions:    userSetting.ArchivedExceptions,
 	}
 
 	token, err := s.JWTService.GenerateToken(*user, resourceName, role.Name)
@@ -385,10 +389,8 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 
 	userSettingModel := out.UserSettingResponse{
 		SettingID:             userSetting.SettingID,
-		ArchivedEnabled:       userSetting.ArchivedEnabled,
 		GroupInviteType:       userSetting.GroupInviteType,
 		GroupInviteDisallowed: userSetting.GroupInviteDisallowed,
-		ArchivedExceptions:    userSetting.ArchivedExceptions,
 	}
 
 	token, err := s.JWTService.GenerateToken(*user, resourceName, role.Name)
@@ -423,6 +425,33 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		RefreshToken:   token.RefreshToken,
 	}
 	return responses, response.ErrorResponse{}
+}
+
+func (s authService) ReLogin(req struct {
+	UserID       uint   `json:"user_id" binding:"required"`
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}) (interface{}, response.ErrorResponse) {
+	userSession, err := s.UserSessionRepository.GetUserSessionByRefreshTokenAndUserID(req.UserID, req.RefreshToken)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid Refresh Token",
+			Error:   err.Error(),
+		}
+	}
+
+	user, err := s.UserRepository.GetUserByID(userSession.UserID)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid User",
+			Error:   err.Error(),
+		}
+	}
+
+	return s.Login(&in.LoginRequest{
+		Username: user.Username,
+	}, *user.DeviceID)
 }
 
 func (s authService) LoginPhoneNumber(req *in.LoginPhoneNumber, deviceID string) (interface{}, response.ErrorResponse) {
@@ -822,7 +851,7 @@ func (s authService) GetListUser(clientID string) (interface{}, response.ErrorRe
 		}
 	}
 
-	users, err := s.UserRepository.GetListUser()
+	users, err := s.UserRepository.GetListUserResponse()
 	if err != nil {
 		return nil, response.ErrorResponse{
 			Code:    http.StatusBadRequest,
@@ -831,7 +860,7 @@ func (s authService) GetListUser(clientID string) (interface{}, response.ErrorRe
 		}
 	}
 
-	var userResponse []out.UserResponse
+	var userResponse []out.UserRoleResourceSettingResponse
 
 	for _, user := range *users {
 		var phoneNumber string
@@ -841,7 +870,7 @@ func (s authService) GetListUser(clientID string) (interface{}, response.ErrorRe
 		} else {
 			phoneNumber = decrypt
 		}
-		userResponse = append(userResponse, out.UserResponse{
+		userResponse = append(userResponse, out.UserRoleResourceSettingResponse{
 			UserID:         user.UserID,
 			ClientID:       user.ClientID,
 			Username:       user.Username,
@@ -849,6 +878,9 @@ func (s authService) GetListUser(clientID string) (interface{}, response.ErrorRe
 			LastName:       user.LastName,
 			PhoneNumber:    phoneNumber,
 			ProfilePicture: user.ProfilePicture,
+			Role:           user.Role,
+			Resource:       user.Resource,
+			UserSetting:    user.UserSetting,
 		})
 	}
 
@@ -970,4 +1002,42 @@ func (s authService) ForgetPinCode(req *struct {
 	_ = s.RedisService.SaveData(utils.User, user.ClientID, user)
 
 	return response.ErrorResponse{}
+}
+
+func (s authService) GetUserByID(userID uint, clientID string) (interface{}, error) {
+	_, err := s.UserRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return nil, errors.New("user is not an admin")
+	}
+
+	users, err := s.UserRepository.GetListUserByUserIDResponse(userID)
+	if err != nil {
+		return nil, errors.New("user is not an admin")
+	}
+
+	var userResponse []out.UserRoleResourceSettingResponse
+
+	for _, user := range *users {
+		var phoneNumber string
+		decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
+		if err != nil {
+			phoneNumber = user.PhoneNumber
+		} else {
+			phoneNumber = decrypt
+		}
+		userResponse = append(userResponse, out.UserRoleResourceSettingResponse{
+			UserID:         user.UserID,
+			ClientID:       user.ClientID,
+			Username:       user.Username,
+			FirstName:      user.FirstName,
+			LastName:       user.LastName,
+			PhoneNumber:    phoneNumber,
+			ProfilePicture: user.ProfilePicture,
+			Role:           user.Role,
+			Resource:       user.Resource,
+			UserSetting:    user.UserSetting,
+		})
+	}
+
+	return userResponse, nil
 }

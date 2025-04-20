@@ -12,11 +12,9 @@ const (
 )
 
 const (
-	TableUsersName                  = "users"
-	TableRolesName                  = "roles"
-	TableUserRolesName              = "user_roles"
-	TableFamilyName                 = "family"
-	TableFamilyPermissionName       = "family_permission"
-	TableFamilyMemberPermissionName = "family_member_permission"
-	TableFamilyMemberName           = "family_member"
+	TableUsersName        = "users"
+	TableUserResourceName = "user_resources"
+	TableRolesName        = "roles"
+	TableUserRolesName    = "user_roles"
+	TableResourcesName    = "resources"
 )

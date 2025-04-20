@@ -12,11 +12,12 @@ type ResourceController interface {
 	AddResource(ctx *gin.Context)
 	UpdateResource(ctx *gin.Context)
 	GetResources(ctx *gin.Context)
-	AssignResourceToRole(ctx *gin.Context)
+	AssignUserResource(ctx *gin.Context)
+	RemoveAssignUserResource(ctx *gin.Context)
 	GetResourcesById(ctx *gin.Context)
 	DeleteResourceById(ctx *gin.Context)
 	GetResourceUserById(ctx *gin.Context)
-	GetResourceRoles(ctx *gin.Context)
+	GetUserResources(ctx *gin.Context)
 }
 
 type resourceController struct {
@@ -95,9 +96,9 @@ func (h resourceController) GetResources(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Resources retrieved successfully", resources, nil)
 }
 
-func (h resourceController) AssignResourceToRole(ctx *gin.Context) {
+func (h resourceController) AssignUserResource(ctx *gin.Context) {
 	var req struct {
-		RoleID     uint `json:"role_id" binding:"required"`
+		UserID     uint `json:"user_id" binding:"required"`
 		ResourceID uint `json:"resource_id" binding:"required"`
 	}
 
@@ -112,8 +113,37 @@ func (h resourceController) AssignResourceToRole(ctx *gin.Context) {
 		return
 	}
 
-	roleResource, err := h.ResourceService.AssignResourceToRole(req.RoleID, req.ResourceID, token.ClientID)
-	response.SendResponse(ctx, 200, "Resource assigned to role successfully", roleResource, err.Error())
+	userResources, err := h.ResourceService.AssignUserResource(req.UserID, req.ResourceID, token.ClientID)
+	if err != nil {
+		response.SendResponse(ctx, 500, "Failed to assign resource", nil, err.Error())
+		return
+	}
+	response.SendResponse(ctx, 200, "Resource assigned to role successfully", userResources, nil)
+}
+
+func (h resourceController) RemoveAssignUserResource(ctx *gin.Context) {
+	var req struct {
+		UserID     uint `json:"user_id" binding:"required"`
+		ResourceID uint `json:"resource_id" binding:"required"`
+	}
+
+	token, exist := utils.ExtractTokenClaims(ctx)
+	if !exist {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.SendResponse(ctx, 400, "Invalid request", nil, err.Error())
+		return
+	}
+
+	err := h.ResourceService.RemoveAssignUserResource(req.UserID, req.ResourceID, token.ClientID)
+	if err != nil {
+		response.SendResponse(ctx, 500, "Failed to remove resource", nil, err.Error())
+		return
+	}
+	response.SendResponse(ctx, 200, "Resource removed from users successfully", nil, nil)
 }
 
 func (h resourceController) GetResourcesById(ctx *gin.Context) {
@@ -130,13 +160,13 @@ func (h resourceController) GetResourcesById(ctx *gin.Context) {
 	}
 
 	resource, err := h.ResourceService.GetResourceById(resourceID, token.ClientID)
-	response.SendResponse(ctx, 200, "Resource retrieved successfully", resource, err.Error())
+	response.SendResponse(ctx, 200, "Resource retrieved successfully", resource, nil)
 }
 
 func (h resourceController) DeleteResourceById(ctx *gin.Context) {
 	resourceID, err := utils.ConvertToUint(ctx.Param("id"))
 	if err != nil {
-		response.SendResponse(ctx, 400, "Resource ID must be a number", nil, err.Error())
+		response.SendResponse(ctx, 400, "Resource ID must be a number", nil, nil)
 		return
 	}
 
@@ -147,7 +177,11 @@ func (h resourceController) DeleteResourceById(ctx *gin.Context) {
 	}
 
 	err = h.ResourceService.DeleteResourceById(resourceID, token.ClientID)
-	response.SendResponse(ctx, 200, "Resource deleted successfully", nil, err.Error())
+	if err != nil {
+		response.SendResponse(ctx, 500, "Failed to delete resource", nil, err.Error())
+		return
+	}
+	response.SendResponse(ctx, 200, "Resource deleted successfully", nil, nil)
 }
 
 func (h resourceController) GetResourceUserById(ctx *gin.Context) {
@@ -172,14 +206,14 @@ func (h resourceController) GetResourceUserById(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Users retrieved successfully", users, nil)
 }
 
-func (h resourceController) GetResourceRoles(context *gin.Context) {
+func (h resourceController) GetUserResources(context *gin.Context) {
 	token, exist := utils.ExtractTokenClaims(context)
 	if !exist {
 		response.SendResponse(context, http.StatusBadRequest, "Error", nil, "Token not found")
 		return
 	}
 
-	roles, err := h.ResourceService.GetResourceRoles(token.ClientID)
+	roles, err := h.ResourceService.GetUserResources(token.ClientID)
 	if err != nil {
 		response.SendResponse(context, 500, "Failed to get roles", nil, err.Error())
 		return

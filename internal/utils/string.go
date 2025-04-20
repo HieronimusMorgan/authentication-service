@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"authentication/internal/dto/out"
 	"errors"
 	"fmt"
 	"regexp"
@@ -50,4 +51,36 @@ func ValidateEmail(email string) error {
 		return errors.New("invalid email format")
 	}
 	return nil
+}
+
+func ContainsRole(roles []out.RoleResponse, id uint) bool {
+	for _, r := range roles {
+		if r.RoleID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func ContainsResource(resources []out.ResourceResponse, id uint) bool {
+	for _, r := range resources {
+		if r.ResourceID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func DerefStr(s *string) string {
+	if s != nil {
+		return *s
+	}
+	return ""
+}
+
+func DerefInt(i *int) int {
+	if i != nil {
+		return *i
+	}
+	return 0
 }

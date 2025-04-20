@@ -44,7 +44,7 @@ type Repository struct {
 	UserRepository         repository.UserRepository
 	UserSettingRepository  repository.UserSettingRepository
 	ResourceRepository     repository.ResourceRepository
-	RoleResourceRepository repository.RoleResourceRepository
+	UserResourceRepository repository.UserResourceRepository
 	RoleRepository         repository.RoleRepository
 	UserRoleRepository     repository.UserRoleRepository
 	UserSessionRepository  repository.UserSessionRepository

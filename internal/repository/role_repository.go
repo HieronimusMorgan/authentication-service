@@ -12,7 +12,6 @@ type RoleRepository interface {
 	GetAllRoles() (*[]models.Role, error)
 	UpdateRole(role **models.Role) error
 	DeleteRole(role **models.Role) error
-	GetAllRolesByResourceId(resource *models.Resource) (*[]models.Role, error)
 }
 
 type roleRepository struct {
@@ -74,18 +73,4 @@ func (r roleRepository) DeleteRole(role **models.Role) error {
 		return err
 	}
 	return nil
-}
-
-func (r roleRepository) GetAllRolesByResourceId(resource *models.Resource) (*[]models.Role, error) {
-	var roles []models.Role
-	err := r.db.Table("roles").
-		Select("roles.role_id, roles.name").
-		Joins("JOIN role_resources ON roles.role_id = role_resources.role_id").
-		Joins("JOIN resources ON role_resources.resource_id = resources.resource_id").
-		Where("resources.resource_id = ?", resource.ResourceID).
-		Find(&roles).Error
-	if err != nil {
-		return nil, err
-	}
-	return &roles, nil
 }

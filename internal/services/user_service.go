@@ -24,7 +24,7 @@ type userService struct {
 	UserSettingRepository  repository.UserSettingRepository
 	ResourceRepository     repository.ResourceRepository
 	RoleRepository         repository.RoleRepository
-	RoleResourceRepository repository.RoleResourceRepository
+	UserResourceRepository repository.UserResourceRepository
 	UserRoleRepository     repository.UserRoleRepository
 	UserSessionRepository  repository.UserSessionRepository
 	RedisService           utils.RedisService
@@ -84,10 +84,8 @@ func (s userService) GetProfile(clientID string) (*out.UserResponse, response.Er
 
 	userSettingModel := out.UserSettingResponse{
 		SettingID:             userSetting.SettingID,
-		ArchivedEnabled:       userSetting.ArchivedEnabled,
 		GroupInviteType:       userSetting.GroupInviteType,
 		GroupInviteDisallowed: userSetting.GroupInviteDisallowed,
-		ArchivedExceptions:    userSetting.ArchivedExceptions,
 	}
 
 	userResponse.UserSetting = userSettingModel
@@ -180,18 +178,12 @@ func (s userService) UpdateUserSetting(userSetting *in.UserSettingsRequest, clie
 		}
 	}
 
-	userSettingModel.ArchivedEnabled = userSetting.ArchivedEnabled
 	userSettingModel.GroupInviteType = userSetting.GroupInviteType
 
 	if len(userSetting.GroupInviteDisallowed) > 0 {
 		userSettingModel.GroupInviteDisallowed = userSetting.GroupInviteDisallowed
 	} else {
 		userSettingModel.GroupInviteDisallowed = nil
-	}
-	if len(userSetting.ArchivedExceptions) > 0 {
-		userSettingModel.ArchivedExceptions = userSetting.ArchivedExceptions
-	} else {
-		userSettingModel.ArchivedExceptions = nil
 	}
 	userSettingModel.UpdatedAt = time.Now()
 

@@ -40,6 +40,24 @@ func (r *userTransactionalRepository) RegistrationUser(user *models.Users) error
 			return err
 		}
 
+		var resource []models.Resource
+		if err := r.db.Table(utils.TableResourcesName).Where("name IN ('auth','asset')").Find(&resource).Error; err != nil {
+			return err
+		}
+
+		for _, res := range resource {
+			userResource := &models.UserResource{
+				UserID:     user.UserID,
+				ResourceID: res.ResourceID,
+				CreatedBy:  "system",
+				UpdatedBy:  "system",
+			}
+
+			if err := tx.Table(utils.TableUserResourceName).Create(userResource).Error; err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 }

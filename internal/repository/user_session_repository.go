@@ -11,6 +11,7 @@ type UserSessionRepository interface {
 	GetUserSessionExpired() (*[]models.UserSession, error)
 	AddUserSession(userSession *models.UserSession) error
 	UpdateSession(session *models.UserSession) error
+	GetUserSessionByRefreshTokenAndUserID(userID uint, refreshToken string) (*models.UserSession, error)
 }
 
 type userSessionRepository struct {
@@ -62,4 +63,13 @@ func (r userSessionRepository) UpdateSession(session *models.UserSession) error 
 		return err
 	}
 	return nil
+}
+
+func (r userSessionRepository) GetUserSessionByRefreshTokenAndUserID(userID uint, refreshToken string) (*models.UserSession, error) {
+	var userSession *models.UserSession
+	err := r.db.Where("user_id = ? AND refresh_token = ?", userID, refreshToken).First(&userSession).Error
+	if err != nil {
+		return nil, err
+	}
+	return userSession, nil
 }
