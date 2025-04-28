@@ -12,15 +12,15 @@ import (
 
 // RedisService defines the contract for Redis operations
 type RedisService interface {
-	SaveData(key string, clientID string, data interface{}) error
-	SaveDataExpired(key string, clientID string, exp float32, data interface{}) error
-	GetData(key string, clientID string, target interface{}) error
-	DeleteData(key string, clientID string) error
+	SaveData(key, clientID string, data interface{}) error
+	SaveDataExpired(key, clientID string, exp float32, data interface{}) error
+	GetData(key, clientID string, target interface{}) error
+	DeleteData(key, clientID string) error
 	GetToken(clientID string) (string, error)
 	DeleteToken(clientID string) error
 }
 
-// RedisServiceImpl is the struct that implements RedisService
+// redisService implements RedisService
 type redisService struct {
 	Client redis.Client
 	Ctx    context.Context
@@ -35,80 +35,63 @@ func NewRedisService(client redis.Client) RedisService {
 }
 
 // SaveData stores data in Redis
-func (r redisService) SaveData(key string, clientID string, data interface{}) error {
+func (r redisService) SaveData(key, clientID string, data interface{}) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("failed to marshal data to JSON: %v", err)
+		return fmt.Errorf("failed to marshal data: %v", err)
 	}
-	redisKey := key + ":" + clientID
-	err = r.Client.Set(r.Ctx, redisKey, jsonData, 0).Err()
-	return err
+	return r.Client.Set(r.Ctx, key+":"+clientID, jsonData, 0).Err()
 }
 
-// SaveDataExpired stores data in Redis with an expiration time
-func (r redisService) SaveDataExpired(key string, requestID string, exp float32, data interface{}) error {
+// SaveDataExpired stores data in Redis with expiration
+func (r redisService) SaveDataExpired(key, clientID string, exp float32, data interface{}) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("failed to marshal data to JSON: %v", err)
+		return fmt.Errorf("failed to marshal data: %v", err)
 	}
-	redisKey := key + ":" + requestID
-	err = r.Client.Set(r.Ctx, redisKey, jsonData, time.Duration(exp)*time.Minute).Err()
-	return err
+	return r.Client.Set(r.Ctx, key+":"+clientID, jsonData, time.Duration(exp)*time.Minute).Err()
 }
 
-// GetData retrieves data from Redis and unmarshals it into target
-func (r redisService) GetData(key string, clientID string, target interface{}) error {
-	redisKey := key + ":" + clientID
-	jsonData, err := r.Client.Get(r.Ctx, redisKey).Result()
+// GetData retrieves and unmarshals data from Redis
+func (r redisService) GetData(key, clientID string, target interface{}) error {
+	jsonData, err := r.Client.Get(r.Ctx, key+":"+clientID).Result()
 	if errors.Is(err, redis.Nil) {
-		return fmt.Errorf("no data found for key: %s", redisKey)
+		return fmt.Errorf("no data found for key: %s", key+":"+clientID)
 	} else if err != nil {
-		return fmt.Errorf("failed to get data from Redis: %v", err)
+		return fmt.Errorf("failed to get data: %v", err)
 	}
-
-	err = json.Unmarshal([]byte(jsonData), target)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal JSON data: %v", err)
-	}
-	return nil
+	return json.Unmarshal([]byte(jsonData), target)
 }
 
 // DeleteData removes a key from Redis
-func (r redisService) DeleteData(key string, clientID string) error {
-	redisKey := key + ":" + clientID
-	err := r.Client.Del(r.Ctx, redisKey).Err()
-	return err
+func (r redisService) DeleteData(key, clientID string) error {
+	return r.Client.Del(r.Ctx, key+":"+clientID).Err()
 }
 
-// GenerateRedisKey creates a formatted key for token storage
+// generateRedisKey creates a formatted key for token storage
 func generateRedisKey(clientID string) string {
 	return "token:" + clientID
 }
 
 // GetToken retrieves a stored token from Redis
 func (r redisService) GetToken(clientID string) (string, error) {
-	redisKey := generateRedisKey(clientID)
-	token, err := r.Client.Get(r.Ctx, redisKey).Result()
+	token, err := r.Client.Get(r.Ctx, generateRedisKey(clientID)).Result()
 	if errors.Is(err, redis.Nil) {
-		return "", nil // Token not found
-	} else if err != nil {
-		return "", err // Other errors
+		return "", nil
 	}
-	return token, nil
+	return token, err
 }
 
 // DeleteToken removes a stored token from Redis
 func (r redisService) DeleteToken(clientID string) error {
-	redisKey := generateRedisKey(clientID)
-	err := r.Client.Del(r.Ctx, redisKey).Err()
-	return err
+	return r.Client.Del(r.Ctx, generateRedisKey(clientID)).Err()
 }
 
-func GetUserRedis(redis RedisService, key string, clientID string) (*models.Users, error) {
-	var u = &models.Users{}
-	err := redis.GetData(key, clientID, u)
-	if err != nil {
+// GetUserRedis retrieves a user from Redis
+func GetUserRedis(redis RedisService, key, clientID string) (*models.Users, error) {
+	var user models.Users
+	if err := redis.GetData(key, clientID, &user); err != nil {
 		return nil, err
 	}
-	return u, nil
+	return &user, nil
 }

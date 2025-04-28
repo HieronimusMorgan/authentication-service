@@ -25,6 +25,7 @@ type AuthController interface {
 	GetListUser(ctx *gin.Context)
 	GetUserByID(ctx *gin.Context)
 	ChangePassword(ctx *gin.Context)
+	GenerateCredentialKey(ctx *gin.Context)
 	Logout(ctx *gin.Context)
 }
 
@@ -373,6 +374,20 @@ func (h authController) ChangePassword(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Password changed successfully", nil, nil)
 }
 
+func (h authController) GenerateCredentialKey(ctx *gin.Context) {
+	token, exist := utils.ExtractTokenClaims(ctx)
+	if !exist {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+	credentialKey, err := h.AuthService.GenerateCredentialKey(token.ClientID)
+	if err != nil {
+		response.SendResponse(ctx, 500, "Failed to get credential key", nil, err.Error())
+		return
+	}
+
+	response.SendResponse(ctx, 200, "Get credential key successfully", credentialKey, nil)
+}
 func (h authController) Logout(ctx *gin.Context) {
 	token, exist := utils.ExtractTokenClaims(ctx)
 	if !exist {

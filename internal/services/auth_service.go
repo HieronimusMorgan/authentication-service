@@ -53,6 +53,7 @@ type AuthService interface {
 		PinCode string `json:"pin_code" binding:"required"`
 	}, clientID string) response.ErrorResponse
 	GetUserByID(userID uint, clientID string) (interface{}, error)
+	GenerateCredentialKey(clientID string) (interface{}, error)
 }
 
 type authService struct {
@@ -300,8 +301,24 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 		}
 	}
 
+	userRedis, err := s.UserRepository.GetUserRedisByClientID(user.ClientID)
+	if err != nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User not found",
+			Error:   err.Error(),
+		}
+	}
+
+	if userRedis == nil {
+		return out.RegisterResponse{}, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User not found",
+			Error:   "User not found",
+		}
+	}
 	_ = s.RedisService.SaveData(utils.Token, user.ClientID, token)
-	_ = s.RedisService.SaveData(utils.User, user.ClientID, user)
+	_ = s.RedisService.SaveData(utils.User, user.ClientID, userRedis)
 
 	phoneNumber, _ := s.Encryption.Decrypt(user.PhoneNumber)
 	responses := out.RegisterResponse{
@@ -402,8 +419,25 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		}
 	}
 
+	userRedis, err := s.UserRepository.GetUserRedisByClientID(user.ClientID)
+	if err != nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User not found",
+			Error:   err.Error(),
+		}
+	}
+
+	if userRedis == nil {
+		return nil, response.ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "User not found",
+			Error:   "User not found",
+		}
+	}
+
 	_ = s.RedisService.SaveData(utils.Token, user.ClientID, token)
-	_ = s.RedisService.SaveData(utils.User, user.ClientID, user)
+	_ = s.RedisService.SaveData(utils.User, user.ClientID, userRedis)
 
 	var phoneNumber string
 	decrypt, err := s.Encryption.Decrypt(user.PhoneNumber)
@@ -415,6 +449,7 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 
 	responses := out.LoginResponse{
 		UserID:         user.UserID,
+		ClientID:       user.ClientID,
 		Username:       user.Username,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
@@ -1040,4 +1075,22 @@ func (s authService) GetUserByID(userID uint, clientID string) (interface{}, err
 	}
 
 	return userResponse, nil
+}
+
+func (s authService) GenerateCredentialKey(clientID string) (interface{}, error) {
+	data, err := utils.GetUserRedis(s.RedisService, utils.User, clientID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+	credentialKey := uuid.New().String()
+
+	credentialKeyMap := struct {
+		CredentialKey string `json:"credential_key"`
+	}{
+		CredentialKey: credentialKey,
+	}
+
+	_ = s.RedisService.SaveDataExpired(utils.CredentialKey, data.ClientID, 10, credentialKeyMap)
+
+	return credentialKey, nil
 }

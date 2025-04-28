@@ -28,3 +28,13 @@ func GenerateClientID() string {
 	randomPart := hex.EncodeToString(randomBytes)
 	return randomPart
 }
+
+func GenerateCredentialKey() string {
+	randomBytes := make([]byte, 16)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return ""
+	}
+	randomPart := hex.EncodeToString(randomBytes)
+	return randomPart
+}

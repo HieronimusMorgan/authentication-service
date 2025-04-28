@@ -35,6 +35,7 @@ type UserRepository interface {
 	UpdatePinAttempts(clientID string) error
 	ResetPinAttempts(user *models.Users) error
 	GetAllUsersByResourceId(resources *models.Resource) (*[]models.Users, error)
+	GetUserRedisByClientID(clientID string) (*models.UserRedis, error)
 }
 
 type userRepository struct {
@@ -424,4 +425,86 @@ func (r userRepository) GetAllUsersByResourceId(resources *models.Resource) (*[]
 		return nil, err
 	}
 	return &users, nil
+}
+
+func (r userRepository) GetUserRedisByClientID(clientID string) (*models.UserRedis, error) {
+	// Fetch user and settings
+	var row struct {
+		UserID                uint
+		ClientID              string
+		Username              string
+		Email                 string
+		Password              string
+		PinCode               string
+		PinAttempts           int
+		FirstName             string
+		LastName              string
+		FullName              string
+		PhoneNumber           string
+		ProfilePicture        string
+		DeviceID              *string
+		SettingID             uint
+		GroupInviteType       int
+		GroupInviteDisallowed pq.Int32Array
+	}
+
+	query := `
+		SELECT 
+			u.user_id, u.client_id, u.username, u.email, u.password, u.pin_code, u.pin_attempts,
+			u.first_name, u.last_name, u.full_name, u.phone_number, u.profile_picture, u.device_id,
+			us.setting_id, us.group_invite_type, us.group_invite_disallowed
+		FROM users u
+		LEFT JOIN user_settings us ON us.user_id = u.user_id
+		WHERE u.client_id = ?
+	`
+	if err := r.db.Raw(query, clientID).Scan(&row).Error; err != nil {
+		return nil, err
+	}
+
+	user := &models.UserRedis{
+		UserID:         row.UserID,
+		ClientID:       row.ClientID,
+		Username:       row.Username,
+		Email:          row.Email,
+		Password:       row.Password,
+		PinCode:        row.PinCode,
+		PinAttempts:    row.PinAttempts,
+		FirstName:      row.FirstName,
+		LastName:       row.LastName,
+		FullName:       row.FullName,
+		PhoneNumber:    row.PhoneNumber,
+		ProfilePicture: row.ProfilePicture,
+		DeviceID:       row.DeviceID,
+		UserSetting: models.UserSettingRedis{
+			SettingID:             row.SettingID,
+			GroupInviteType:       row.GroupInviteType,
+			GroupInviteDisallowed: row.GroupInviteDisallowed,
+		},
+	}
+
+	var roles []models.RoleRedis
+	roleQuery := `
+		SELECT r.role_id, r.name, r.description
+		FROM roles r
+		JOIN user_roles ur ON ur.role_id = r.role_id
+		WHERE ur.user_id = ?
+	`
+	if err := r.db.Raw(roleQuery, user.UserID).Scan(&roles).Error; err != nil {
+		return nil, err
+	}
+	user.Role = roles
+
+	var resources []models.ResourceRedis
+	resourceQuery := `
+		SELECT r.resource_id, r.name, r.description
+		FROM resources r
+		JOIN user_resources ur ON ur.resource_id = r.resource_id
+		WHERE ur.user_id = ?
+	`
+	if err := r.db.Raw(resourceQuery, user.UserID).Scan(&resources).Error; err != nil {
+		return nil, err
+	}
+	user.Resource = resources
+
+	return user, nil
 }

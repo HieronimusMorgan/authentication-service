@@ -1,14 +1,15 @@
 package utils
 
 const (
-	User         = "user"
-	Token        = "token"
-	PinVerify    = "pin_verify"
-	DeviceVerify = "device_verify"
-	UserSession  = "user_session"
-	ClientID     = "client_id"
-	UserID       = "user_id"
-	RoleID       = "role_id"
+	User          = "user"
+	Token         = "token"
+	PinVerify     = "pin_verify"
+	DeviceVerify  = "device_verify"
+	UserSession   = "user_session"
+	CredentialKey = "credential_key"
+	ClientID      = "client_id"
+	UserID        = "user_id"
+	RoleID        = "role_id"
 )
 
 const (
