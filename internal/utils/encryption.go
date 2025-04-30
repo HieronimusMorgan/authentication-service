@@ -16,7 +16,7 @@ type Encryption interface {
 	Encrypt(text string) (string, error)
 	Decrypt(encryptedText string) (string, error)
 	HashPhoneNumber(phone string) string
-	HashPassword(password string) (string, error)
+	HashPassword(password string) (*string, error)
 	CheckPassword(hash, password string) error
 }
 
@@ -79,12 +79,13 @@ func (a *encryption) HashPhoneNumber(phone string) string {
 }
 
 // HashPassword securely hashes a password using bcrypt
-func (a *encryption) HashPassword(password string) (string, error) {
+func (a *encryption) HashPassword(password string) (*string, error) {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return "", errors.New("failed to hash password: " + err.Error())
+		return nil, errors.New("failed to hash password: " + err.Error())
 	}
-	return string(hashed), nil
+	hashedStr := string(hashed)
+	return &hashedStr, nil
 }
 
 // CheckPassword verifies a bcrypt hashed password

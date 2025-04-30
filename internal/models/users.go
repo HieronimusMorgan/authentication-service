@@ -11,7 +11,7 @@ type Users struct {
 	Username       string         `gorm:"unique;not null" json:"username,omitempty"`
 	Email          string         `gorm:"unique;not null" json:"email,omitempty"`
 	Password       string         `gorm:"not null" json:"-"`
-	PinCode        string         `gorm:"not null" json:"-"`
+	PinCode        *string        `gorm:"not null" json:"-"`
 	PinAttempts    int            `gorm:"default:0" json:"-"`
 	PinLastUpdated time.Time      `json:"-"`
 	FirstName      string         `json:"first_name,omitempty"`

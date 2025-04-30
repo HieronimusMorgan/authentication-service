@@ -5,17 +5,17 @@ import (
 )
 
 type UserRedis struct {
-	UserID         uint             `gorm:"primaryKey" json:"user_id,omitempty"`
-	ClientID       string           `gorm:"unique;not null" json:"client_id,omitempty"`
-	Username       string           `gorm:"unique;not null" json:"username,omitempty"`
-	Email          string           `gorm:"unique;not null" json:"email,omitempty"`
-	Password       string           `gorm:"not null" json:"-"`
-	PinCode        string           `gorm:"not null" json:"-"`
-	PinAttempts    int              `gorm:"default:0" json:"-"`
+	UserID         uint             `json:"user_id,omitempty"`
+	ClientID       string           `json:"client_id,omitempty"`
+	Username       string           `json:"username,omitempty"`
+	Email          string           `json:"email,omitempty"`
+	Password       string           `json:"-"`
+	PinCode        string           `json:"-"`
+	PinAttempts    int              `json:"-"`
 	FirstName      string           `json:"first_name,omitempty"`
 	LastName       string           `json:"last_name,omitempty"`
 	FullName       string           `json:"full_name,omitempty"`
-	PhoneNumber    string           `gorm:"unique" json:"phone_number,omitempty"`
+	PhoneNumber    string           `json:"phone_number,omitempty"`
 	ProfilePicture string           `json:"profile_picture,omitempty"`
 	Role           []RoleRedis      `json:"role,omitempty"`
 	Resource       []ResourceRedis  `json:"resource,omitempty"`
@@ -25,19 +25,19 @@ type UserRedis struct {
 
 type RoleRedis struct {
 	RoleID      uint   `json:"role_id,omitempty"`
-	Name        string `gorm:"unique;not null" json:"name,omitempty"`
+	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 }
 
 type ResourceRedis struct {
 	ResourceID  uint   `json:"resource_id,omitempty"`
-	Name        string `gorm:"unique;not null" json:"name,omitempty"`
+	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 }
 
 type UserSettingRedis struct {
-	SettingID             uint          `gorm:"column:setting_id"`
-	UserID                uint          `gorm:"uniqueIndex;not null;column:user_id"`
-	GroupInviteType       int           `gorm:"column:group_invite_type;default:1"`
-	GroupInviteDisallowed pq.Int32Array `gorm:"type:int[];column:group_invite_disallowed;default:{none}"`
+	SettingID             uint          `json:"setting_id,omitempty"`
+	UserID                uint          `json:"user_id,omitempty"`
+	GroupInviteType       int           `json:"group_invite_type,omitempty"`
+	GroupInviteDisallowed pq.Int32Array `json:"group_invite_disallowed,omitempty"`
 }

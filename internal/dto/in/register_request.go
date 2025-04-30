@@ -7,7 +7,7 @@ type RegisterRequest struct {
 	LastName       string  `json:"last_name" binding:"required"`
 	Email          string  `json:"email,omitempty"`
 	PhoneNumber    string  `json:"phone_number" binding:"required"`
-	PinCode        string  `json:"pin_code" binding:"required"`
-	DeviceID       *string `json:"device_id"`
+	PinCode        *string `json:"pin_code,omitempty"`
+	DeviceID       *string `json:"device_id,omitempty"`
 	ProfilePicture string  `json:"profile_picture,omitempty"`
 }

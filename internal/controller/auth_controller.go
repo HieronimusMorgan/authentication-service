@@ -65,8 +65,8 @@ func (h authController) Register(c *gin.Context) {
 	}
 
 	user, err := h.AuthService.Register(&req, deviceID)
-	if err.Message != "" {
-		handleErrorResponse(c, err.Code, err.Message, nil)
+	if err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
@@ -96,8 +96,8 @@ func (h authController) Login(c *gin.Context) {
 	}
 
 	user, err := h.AuthService.Login(&req, deviceID)
-	if err.Message != "" {
-		handleErrorResponse(c, err.Code, err.Message, nil)
+	if err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
@@ -127,8 +127,8 @@ func (h authController) LoginPhoneNumber(c *gin.Context) {
 	}
 
 	user, errs := h.AuthService.LoginPhoneNumber(&req, deviceID)
-	if errs.Message != "" {
-		handleErrorResponse(c, errs.Code, errs.Message, nil)
+	if errs != nil {
+		handleErrorResponse(c, http.StatusBadRequest, errs.Error(), nil)
 		return
 	}
 
@@ -155,8 +155,8 @@ func (h authController) ChangeDeviceID(c *gin.Context) {
 	}
 
 	data, errs := h.AuthService.ChangeDeviceID(&req)
-	if errs.Message != "" {
-		handleErrorResponse(c, errs.Code, errs.Message, nil)
+	if errs != nil {
+		handleErrorResponse(c, http.StatusBadRequest, errs.Error(), nil)
 		return
 	}
 
@@ -175,8 +175,8 @@ func (h authController) VerifyDeviceID(c *gin.Context) {
 	}
 
 	data, errs := h.AuthService.VerifyDeviceID(&req)
-	if errs.Message != "" {
-		handleErrorResponse(c, errs.Code, errs.Message, nil)
+	if errs != nil {
+		handleErrorResponse(c, http.StatusBadRequest, errs.Error(), nil)
 		return
 	}
 
@@ -200,8 +200,8 @@ func (h authController) VerifyPinCode(c *gin.Context) {
 	}
 
 	clientID, err := h.AuthService.VerifyPinCode(&req, token.ClientID)
-	if err.Message != "" {
-		handleErrorResponse(c, err.Code, err.Message, nil)
+	if err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
@@ -226,8 +226,8 @@ func (h authController) ChangePinCode(c *gin.Context) {
 	}
 
 	errs := h.AuthService.ChangePinCode(&req, token.ClientID)
-	if errs.Message != "" {
-		handleErrorResponse(c, errs.Code, errs.Message, nil)
+	if errs != nil {
+		handleErrorResponse(c, http.StatusBadRequest, errs.Error(), nil)
 		return
 	}
 
@@ -252,8 +252,8 @@ func (h authController) ForgetPinCode(c *gin.Context) {
 	}
 
 	errs := h.AuthService.ForgetPinCode(&req, token.ClientID)
-	if errs.Message != "" {
-		handleErrorResponse(c, errs.Code, errs.Message, nil)
+	if errs != nil {
+		handleErrorResponse(c, http.StatusBadRequest, errs.Error(), nil)
 		return
 	}
 
@@ -271,8 +271,8 @@ func (h authController) RegisterInternalToken(c *gin.Context) {
 	}
 
 	token, errs := h.AuthService.RegisterInternalToken(&req)
-	if errs.Message != "" {
-		response.SendResponse(c, errs.Code, errs.Error, nil, errs.Message)
+	if errs != nil {
+		response.SendResponse(c, http.StatusBadRequest, errs.Error(), nil, errs)
 		return
 	}
 
@@ -302,8 +302,8 @@ func (h authController) UpdateRole(ctx *gin.Context) {
 	}
 
 	errs := h.AuthService.UpdateRole(userID, req.RoleID, token.ClientID)
-	if errs.Message != "" {
-		response.SendResponse(ctx, errs.Code, errs.Error, nil, errs.Message)
+	if errs != nil {
+		response.SendResponse(ctx, http.StatusBadRequest, errs.Error(), nil, errs)
 		return
 	}
 
@@ -318,8 +318,8 @@ func (h authController) GetListUser(ctx *gin.Context) {
 	}
 
 	users, errs := h.AuthService.GetListUser(token.ClientID)
-	if errs.Message != "" {
-		response.SendResponse(ctx, errs.Code, errs.Error, nil, errs.Message)
+	if errs != nil {
+		response.SendResponse(ctx, http.StatusBadRequest, errs.Error(), nil, errs)
 		return
 	}
 
@@ -366,8 +366,8 @@ func (h authController) ChangePassword(ctx *gin.Context) {
 	}
 
 	errs := h.AuthService.ChangePassword(&req, token.ClientID)
-	if errs != (response.ErrorResponse{}) {
-		response.SendResponse(ctx, errs.Code, errs.Error, nil, errs.Message)
+	if errs != nil {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, errs)
 		return
 	}
 
