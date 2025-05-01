@@ -193,7 +193,6 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 		FullName:       fullName,
 		Email:          req.Email,
 		PhoneNumber:    hashPhoneNumber,
-		ProfilePicture: req.ProfilePicture,
 		RoleID:         role.RoleID,
 		DeviceID: func() *string {
 			if hashDeviceID == "" {
@@ -272,10 +271,10 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, error) {
 	user, err := s.UserRepository.GetUserByUsername(req.Username)
 	if err != nil {
-		return nil, errors.New("Username or Password is incorrect")
+		return nil, errors.New("username or Password is incorrect")
 	}
 	if err := utils.CheckPassword(user.Password, req.Password); err != nil {
-		return nil, errors.New("Username or Password is incorrect")
+		return nil, errors.New("username or Password is incorrect")
 	}
 
 	if deviceID == "MOBILE" && user.DeviceID != nil {

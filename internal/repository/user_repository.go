@@ -244,7 +244,7 @@ func (r userRepository) GetListUserResponse() (*[]out.UserRoleResourceSettingRes
 				FirstName:      row.FirstName,
 				LastName:       row.LastName,
 				PhoneNumber:    row.PhoneNumber,
-				ProfilePicture: row.ProfilePicture,
+				ProfilePicture: &row.ProfilePicture,
 				Role:           []out.RoleResponse{},
 				Resource:       []out.ResourceResponse{},
 			}
@@ -335,7 +335,7 @@ func (r userRepository) GetListUserByUserIDResponse(userID uint) (*[]out.UserRol
 				FirstName:      row.FirstName,
 				LastName:       row.LastName,
 				PhoneNumber:    row.PhoneNumber,
-				ProfilePicture: row.ProfilePicture,
+				ProfilePicture: &row.ProfilePicture,
 				Role:           []out.RoleResponse{},
 				Resource:       []out.ResourceResponse{},
 			}

@@ -9,7 +9,7 @@ type UserResponse struct {
 	FirstName      string              `json:"first_name"`
 	LastName       string              `json:"last_name"`
 	PhoneNumber    string              `gorm:"unique" json:"phone_number"`
-	ProfilePicture string              `json:"profile_picture"`
+	ProfilePicture *string             `json:"profile_picture,omitempty"`
 	UserSetting    UserSettingResponse `json:"user_setting"`
 }
 
@@ -20,7 +20,7 @@ type UserRoleResourceSettingResponse struct {
 	FirstName      string              `json:"first_name"`
 	LastName       string              `json:"last_name"`
 	PhoneNumber    string              `gorm:"unique" json:"phone_number"`
-	ProfilePicture string              `json:"profile_picture"`
+	ProfilePicture *string             `json:"profile_picture,omitempty"`
 	Role           []RoleResponse      `json:"role"`
 	Resource       []ResourceResponse  `json:"resource"`
 	UserSetting    UserSettingResponse `json:"user_setting"`

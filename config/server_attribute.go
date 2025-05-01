@@ -107,7 +107,7 @@ func (s *ServerConfig) Start() error {
 func (s *ServerConfig) initController() {
 	s.Controller = Controller{
 		AuthController:     controller.NewAuthController(s.Services.AuthService, s.Services.UserSessionService, s.JWTService),
-		UserController:     controller.NewUserController(s.Services.UserService, s.JWTService),
+		UserController:     controller.NewUserController(s.Services.UserService, s.JWTService, s.Config.CdnUrl),
 		ResourceController: controller.NewResourceController(s.Services.ResourceService, s.JWTService),
 		RoleController:     controller.NewRoleController(s.Services.RoleService, s.JWTService),
 	}

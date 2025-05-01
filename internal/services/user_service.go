@@ -14,7 +14,7 @@ import (
 type UserService interface {
 	GetProfile(clientID string) (*out.UserResponse, response.ErrorResponse)
 	UpdateNameUserProfile(updateNameRequest *in.UpdateNameRequest, clientID string) (interface{}, error)
-	UpdatePhotoUserProfile(req *in.UpdatePhotoRequest, clientID string) (interface{}, error)
+	UpdatePhotoUserProfile(req string, clientID string) (interface{}, error)
 	UpdateUserSetting(userSetting *in.UserSettingsRequest, clientID string) response.ErrorResponse
 	DeleteUserById(userID uint, clientID string) response.ErrorResponse
 }
@@ -127,13 +127,13 @@ func (s userService) UpdateNameUserProfile(updateNameRequest *in.UpdateNameReque
 	}, nil
 }
 
-func (s userService) UpdatePhotoUserProfile(req *in.UpdatePhotoRequest, clientID string) (interface{}, error) {
+func (s userService) UpdatePhotoUserProfile(req string, clientID string) (interface{}, error) {
 	user, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
 	}
 
-	user.ProfilePicture = req.ProfilePicture
+	user.ProfilePicture = &req
 	user.UpdatedBy = user.FullName
 
 	err = s.UserRepository.UpdateUser(user)

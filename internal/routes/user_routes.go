@@ -11,9 +11,9 @@ func UserRoutes(r *gin.Engine, middleware config.Middleware, userController cont
 	protected.Use(middleware.AuthMiddleware.Handler())
 	{
 		protected.GET("/profile", userController.GetProfile)
-		protected.PUT("/update/profile-name/{id}", userController.UpdateNameUserProfile)
-		protected.PUT("/update/profile-photo/{id}", userController.UpdatePhotoUserProfile)
+		protected.PUT("/update/profile-name/:id", userController.UpdateNameUserProfile)
+		protected.POST("/update/profile-photo/:id", userController.UpdatePhotoUserProfile)
 		protected.POST("/update/user-setting", userController.UpdateUserSetting)
-		protected.DELETE("/delete-user/{id}", userController.DeleteUser)
+		protected.DELETE("/delete-user/:id", userController.DeleteUser)
 	}
 }

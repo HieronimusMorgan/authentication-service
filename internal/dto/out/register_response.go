@@ -6,7 +6,7 @@ type RegisterResponse struct {
 	FirstName      string              `json:"first_name"`
 	LastName       string              `json:"last_name"`
 	PhoneNumber    string              `json:"phone_number"`
-	ProfilePicture string              `json:"profile_picture"`
+	ProfilePicture *string             `json:"profile_picture,omitempty"`
 	Role           string              `json:"role"`
 	Resource       []string            `json:"resource"`
 	UserSetting    UserSettingResponse `json:"user_setting"`

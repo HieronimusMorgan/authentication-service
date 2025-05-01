@@ -18,7 +18,7 @@ type Users struct {
 	LastName       string         `json:"last_name,omitempty"`
 	FullName       string         `json:"full_name,omitempty"`
 	PhoneNumber    string         `gorm:"unique" json:"phone_number,omitempty"`
-	ProfilePicture string         `json:"profile_picture,omitempty"`
+	ProfilePicture *string        `json:"profile_picture,omitempty"`
 	RoleID         uint           `gorm:"not null" json:"role_id,omitempty"`
 	DeviceID       *string        `json:"device_id,omitempty"`
 	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at,omitempty"`
