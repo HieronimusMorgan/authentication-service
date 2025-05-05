@@ -13,6 +13,7 @@ import (
 
 type UserService interface {
 	GetProfile(clientID string) (*out.UserResponse, response.ErrorResponse)
+	AddUserKey(clientID string) error
 	UpdateNameUserProfile(updateNameRequest *in.UpdateNameRequest, clientID string) (interface{}, error)
 	UpdatePhotoUserProfile(req string, clientID string) (interface{}, error)
 	UpdateUserSetting(userSetting *in.UserSettingsRequest, clientID string) response.ErrorResponse
@@ -21,6 +22,7 @@ type UserService interface {
 
 type userService struct {
 	UserRepository         repository.UserRepository
+	UserKeyRepository      repository.UserKeyRepository
 	UserSettingRepository  repository.UserSettingRepository
 	ResourceRepository     repository.ResourceRepository
 	RoleRepository         repository.RoleRepository
@@ -34,12 +36,14 @@ type userService struct {
 
 func NewUserService(
 	userRepo repository.UserRepository,
+	userKeyRepo repository.UserKeyRepository,
 	userSettingRepository repository.UserSettingRepository,
 	redis utils.RedisService,
 	jwtService utils.JWTService,
 	Encryption utils.Encryption) UserService {
 	return userService{
 		UserRepository:        userRepo,
+		UserKeyRepository:     userKeyRepo,
 		UserSettingRepository: userSettingRepository,
 		RedisService:          redis,
 		JWTService:            jwtService,
@@ -91,6 +95,26 @@ func (s userService) GetProfile(clientID string) (*out.UserResponse, response.Er
 	userResponse.UserSetting = userSettingModel
 
 	return &userResponse, response.ErrorResponse{}
+}
+
+func (s userService) AddUserKey(clientID string) error {
+	user, err := s.UserRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return err
+	}
+
+	userKey, err := s.UserKeyRepository.GetUserKeyByUserID(user.UserID)
+	if userKey == nil && err != nil {
+		userKeys, err := utils.GenerateUserKey(user)
+		if err != nil {
+			return err
+		}
+
+		if err := s.UserRepository.SaveUserKey(userKeys); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s userService) UpdateNameUserProfile(updateNameRequest *in.UpdateNameRequest, clientID string) (interface{}, error) {

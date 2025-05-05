@@ -60,6 +60,7 @@ type authService struct {
 	RoleRepository            repository.RoleRepository
 	UserResourceRepository    repository.UserResourceRepository
 	UserRepository            repository.UserRepository
+	UserKeyRepository         repository.UserKeyRepository
 	UserRoleRepository        repository.UserRoleRepository
 	UserSessionRepository     repository.UserSessionRepository
 	UserTransactionRepository repository.UserTransactionalRepository
@@ -75,6 +76,7 @@ func NewAuthService(
 	roleRepo repository.RoleRepository,
 	roleResourceRepo repository.UserResourceRepository,
 	userRepo repository.UserRepository,
+	userKeyRepo repository.UserKeyRepository,
 	userRoleRepo repository.UserRoleRepository,
 	userSessionRepo repository.UserSessionRepository,
 	userTransactionRepo repository.UserTransactionalRepository,
@@ -88,6 +90,7 @@ func NewAuthService(
 		RoleRepository:            roleRepo,
 		UserResourceRepository:    roleResourceRepo,
 		UserRepository:            userRepo,
+		UserKeyRepository:         userKeyRepo,
 		UserRoleRepository:        userRoleRepo,
 		UserSessionRepository:     userSessionRepo,
 		UserTransactionRepository: userTransactionRepo,
@@ -346,6 +349,18 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		phoneNumber = user.PhoneNumber
 	} else {
 		phoneNumber = decrypt
+	}
+
+	userKey, err := s.UserKeyRepository.GetUserKeyByUserID(user.UserID)
+	if userKey == nil && err != nil {
+		userKeys, err := utils.GenerateUserKey(user)
+		if err != nil {
+			return out.RegisterResponse{}, errors.New("unable to generate user key")
+		}
+		// Save user key to database
+		if err := s.UserRepository.SaveUserKey(userKeys); err != nil {
+			return out.RegisterResponse{}, errors.New("unable to save user key")
+		}
 	}
 
 	responses := out.LoginResponse{

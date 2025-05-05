@@ -37,6 +37,7 @@ type UserRepository interface {
 	GetAllUsersByResourceId(resources *models.Resource) (*[]models.Users, error)
 	GetUserRedisByClientID(clientID string) (*models.UserRedis, error)
 	SaveUserKey(keys *models.UserKey) error
+	GetUserKey(userID uint) (*models.UserKey, error)
 }
 
 type userRepository struct {
@@ -515,4 +516,12 @@ func (r userRepository) SaveUserKey(keys *models.UserKey) error {
 		return err
 	}
 	return nil
+}
+
+func (r userRepository) GetUserKey(userID uint) (*models.UserKey, error) {
+	var userKey models.UserKey
+	if err := r.db.Table(utils.TableUserKeysName).Where("user_id = ?", userID).First(&userKey).Error; err != nil {
+		return nil, err
+	}
+	return &userKey, nil
 }

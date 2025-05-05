@@ -42,6 +42,7 @@ type Services struct {
 type Repository struct {
 	AuthRepository         repository.AuthRepository
 	UserRepository         repository.UserRepository
+	UserKeyRepository      repository.UserKeyRepository
 	UserSettingRepository  repository.UserSettingRepository
 	ResourceRepository     repository.ResourceRepository
 	UserResourceRepository repository.UserResourceRepository
