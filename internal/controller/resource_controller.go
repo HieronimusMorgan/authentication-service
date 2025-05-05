@@ -47,7 +47,12 @@ func (h resourceController) AddResource(ctx *gin.Context) {
 	}
 
 	resource, err := h.ResourceService.AddResource(&req.Name, &req.Description, token.ClientID)
-	response.SendResponse(ctx, 200, "Resource added successfully", resource, err.Error())
+	if err != nil {
+		response.SendResponse(ctx, 400, "Failed to add resource", nil, err.Error())
+		return
+	}
+
+	response.SendResponse(ctx, 200, "Resource added successfully", resource, nil)
 }
 
 func (h resourceController) UpdateResource(ctx *gin.Context) {

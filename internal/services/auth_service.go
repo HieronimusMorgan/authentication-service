@@ -131,13 +131,13 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 	if req.PinCode != nil && *req.PinCode != "" {
 		hashedPin, err = s.Encryption.HashPassword(*req.PinCode)
 		if len(*req.PinCode) < 4 {
-			return out.RegisterResponse{}, errors.New("Pin Code must be 4 digits")
+			return out.RegisterResponse{}, errors.New("pin Code must be 4 digits")
 		}
 		if len(*req.PinCode) > 6 {
-			return out.RegisterResponse{}, errors.New("Pin Code must be 6 digits")
+			return out.RegisterResponse{}, errors.New("pin Code must be 6 digits")
 		}
 		if strings.ContainsAny(*req.PinCode, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") {
-			return out.RegisterResponse{}, errors.New("Pin Code must be numeric")
+			return out.RegisterResponse{}, errors.New("pin Code must be numeric")
 		}
 	}
 
@@ -154,12 +154,12 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 
 	hashPhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
 	if err != nil {
-		return out.RegisterResponse{}, errors.New("Phone Number is invalid")
+		return out.RegisterResponse{}, errors.New("phone Number is invalid")
 	}
 
 	role, err := s.RoleRepository.GetRoleByName("User")
 	if err != nil {
-		return out.RegisterResponse{}, errors.New("Unable to get role")
+		return out.RegisterResponse{}, errors.New("unable to get role")
 	}
 
 	firstName := utils.ValidationTrimSpace(req.FirstName)
@@ -167,18 +167,18 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 	fullName := firstName + " " + lastName
 
 	if err := utils.ValidateEmail(req.Email); err != nil {
-		return out.RegisterResponse{}, errors.New("Email is invalid")
+		return out.RegisterResponse{}, errors.New("email is invalid")
 	}
 
 	//check email is exist
 	_, err = s.UserRepository.GetUserByEmail(req.Email)
 	if err == nil {
-		return out.RegisterResponse{}, errors.New("Email already exist")
+		return out.RegisterResponse{}, errors.New("email already exist")
 	}
 
 	phone, err := s.UserRepository.GetUserByPhoneNumber(hashPhoneNumber)
 	if phone != nil && phone.PhoneNumber != "" {
-		return out.RegisterResponse{}, errors.New("Phone Number already exist")
+		return out.RegisterResponse{}, errors.New("phone Number already exist")
 	}
 
 	user := &models.Users{
@@ -235,6 +235,15 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 		GroupInviteDisallowed: userSetting.GroupInviteDisallowed,
 	}
 
+	userKeys, err := utils.GenerateUserKey(user)
+	if err != nil {
+		return out.RegisterResponse{}, errors.New("Unable to generate user key")
+	}
+	// Save user key to database
+	if err := s.UserRepository.SaveUserKey(userKeys); err != nil {
+		return out.RegisterResponse{}, errors.New("Unable to save user key")
+	}
+
 	token, err := s.JWTService.GenerateToken(*user, resourceName, role.Name)
 	if err != nil {
 		return out.RegisterResponse{}, errors.New("User or Password is incorrect")
@@ -250,6 +259,7 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 	}
 	_ = s.RedisService.SaveData(utils.Token, user.ClientID, token)
 	_ = s.RedisService.SaveData(utils.User, user.ClientID, userRedis)
+	_ = s.RedisService.SaveData(utils.UserKey, user.ClientID, userKeys)
 
 	phoneNumber, _ := s.Encryption.Decrypt(user.PhoneNumber)
 	responses := out.RegisterResponse{

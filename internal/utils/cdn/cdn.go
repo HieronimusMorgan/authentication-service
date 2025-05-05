@@ -28,7 +28,12 @@ func UploadImageToCDN(ipCdn string, file *multipart.FileHeader, clientID, authTo
 	if err != nil {
 		return out.ImageResponse{}, err
 	}
-	defer src.Close()
+
+	defer func() {
+		if err := src.Close(); err != nil {
+			fmt.Println("Error closing file:", err)
+		}
+	}()
 
 	if _, err = io.Copy(part, src); err != nil {
 		return out.ImageResponse{}, err
@@ -49,7 +54,12 @@ func UploadImageToCDN(ipCdn string, file *multipart.FileHeader, clientID, authTo
 	if err != nil {
 		return out.ImageResponse{}, err
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Println("Error closing response body:", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusCreated {
 		return out.ImageResponse{}, fmt.Errorf("failed to upload image: %s", resp.Status)

@@ -3,6 +3,7 @@ package utils
 const (
 	User          = "user"
 	Token         = "token"
+	UserKey       = "user_key"
 	PinVerify     = "pin_verify"
 	DeviceVerify  = "device_verify"
 	UserSession   = "user_session"
@@ -14,6 +15,7 @@ const (
 
 const (
 	TableUsersName        = "users"
+	TableUserKeysName     = "user_keys"
 	TableUserResourceName = "user_resources"
 	TableRolesName        = "roles"
 	TableUserRolesName    = "user_roles"

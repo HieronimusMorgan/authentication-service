@@ -145,6 +145,25 @@ CREATE TABLE user_sessions
     deleted_at TIMESTAMP NULL,
     deleted_by VARCHAR(255)
 );
+CREATE INDEX idx_user_sessions_user_session_id ON user_sessions (user_session_id);
+CREATE INDEX idx_user_sessions_user_id ON user_sessions (user_id);
+CREATE INDEX idx_user_sessions_session_token ON user_sessions (session_token);
+
+CREATE TABLE user_keys
+(
+    user_id               INT PRIMARY KEY REFERENCES users (user_id) ON DELETE CASCADE,
+    public_key            TEXT NOT NULL,
+    encrypted_private_key TEXT NOT NULL,
+    encryption_algorithm  VARCHAR(50) DEFAULT 'RSA-2048',
+    salt                  TEXT NOT NULL,
+    created_at            TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
+    created_by            VARCHAR(255),
+    updated_at            TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
+    updated_by            VARCHAR(255),
+    deleted_at            TIMESTAMP NULL,
+    deleted_by            VARCHAR(255)
+);
+CREATE INDEX idx_user_keys_user_id ON user_keys (user_id);
 
 CREATE TABLE cron_jobs
 (

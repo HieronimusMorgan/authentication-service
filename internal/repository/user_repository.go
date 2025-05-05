@@ -36,6 +36,7 @@ type UserRepository interface {
 	ResetPinAttempts(user *models.Users) error
 	GetAllUsersByResourceId(resources *models.Resource) (*[]models.Users, error)
 	GetUserRedisByClientID(clientID string) (*models.UserRedis, error)
+	SaveUserKey(keys *models.UserKey) error
 }
 
 type userRepository struct {
@@ -507,4 +508,11 @@ func (r userRepository) GetUserRedisByClientID(clientID string) (*models.UserRed
 	user.Resource = resources
 
 	return user, nil
+}
+
+func (r userRepository) SaveUserKey(keys *models.UserKey) error {
+	if err := r.db.Table(utils.TableUserKeysName).Create(keys).Error; err != nil {
+		return err
+	}
+	return nil
 }

@@ -1,14 +1,21 @@
 package utils
 
 import (
+	"authentication/internal/models"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
 	"regexp"
+	"time"
 )
 
 // Encryption interface defines the methods for encryption, decryption, and hashing
@@ -112,4 +119,57 @@ func containsInvalidCharacters(phone string) bool {
 	invalidPattern := `[^\+\d]`
 	matched, _ := regexp.MatchString(invalidPattern, phone)
 	return matched
+}
+
+func GenerateUserKey(user *models.Users) (*models.UserKey, error) {
+	salt := make([]byte, 32)
+	n, err := rand.Read(salt)
+	if err != nil || n != 32 {
+		return nil, fmt.Errorf("failed to generate secure salt: %w", err)
+	}
+
+	aesKey := argon2.IDKey(
+		[]byte(user.ClientID), // Input
+		salt,                  // Salt
+		5,                     // Time (iterations)
+		128*1024,              // Memory (128 MB)
+		8,                     // Threads (parallelism)
+		32,                    // Output key size
+	)
+
+	// Step 3: Generate RSA key pair (2048-bit)
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, err
+	}
+	pubKeyBytes := x509.MarshalPKCS1PublicKey(&privKey.PublicKey)
+	privKeyBytes := x509.MarshalPKCS1PrivateKey(privKey)
+
+	// Step 4: Encrypt private key using AES-GCM
+	block, err := aes.NewCipher(aesKey)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, fmt.Errorf("failed to generate nonce: %w", err)
+	}
+	ciphertext := gcm.Seal(nonce, nonce, privKeyBytes, nil)
+
+	// Step 5: Return complete key struct
+	return &models.UserKey{
+		UserID:              user.UserID,
+		PublicKey:           base64.StdEncoding.EncodeToString(pubKeyBytes),
+		EncryptedPrivateKey: base64.StdEncoding.EncodeToString(ciphertext),
+		EncryptionAlgorithm: "RSA-2048 + AES-GCM + Argon2id",
+		Salt:                base64.StdEncoding.EncodeToString(salt),
+		CreatedAt:           time.Now(),
+		CreatedBy:           &user.ClientID,
+		UpdatedAt:           time.Now(),
+		UpdatedBy:           &user.UpdatedBy,
+	}, nil
 }
