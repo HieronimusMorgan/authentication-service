@@ -9,6 +9,7 @@ import (
 	controllercron "authentication/internal/utils/cron/controller"
 	repositorycron "authentication/internal/utils/cron/repository"
 	servicescron "authentication/internal/utils/cron/service"
+	nt "authentication/internal/utils/nats"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -27,6 +28,7 @@ type ServerConfig struct {
 	Middleware    Middleware
 	Cron          Cron
 	Encryption    Encryption
+	Nats          Nats
 }
 
 // Services holds all service dependencies
@@ -75,4 +77,8 @@ type Cron struct {
 
 type Encryption struct {
 	EncryptionService utils.Encryption
+}
+
+type Nats struct {
+	NatsService nt.Service
 }

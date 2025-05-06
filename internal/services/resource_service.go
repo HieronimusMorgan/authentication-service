@@ -4,6 +4,7 @@ import (
 	"authentication/internal/dto/out"
 	"authentication/internal/models"
 	"authentication/internal/repository"
+	nt "authentication/internal/utils/nats"
 	"errors"
 	"strings"
 )
@@ -25,19 +26,16 @@ type resourceService struct {
 	UserResourceRepository repository.UserResourceRepository
 	RoleRepository         repository.RoleRepository
 	UserRepository         repository.UserRepository
+	NatsService            nt.Service
 }
 
-func NewResourceService(
-	resourceRepo repository.ResourceRepository,
-	roleResourceRepo repository.UserResourceRepository,
-	roleRepo repository.RoleRepository,
-	userRepo repository.UserRepository,
-) ResourceService {
+func NewResourceService(resourceRepo repository.ResourceRepository, roleResourceRepo repository.UserResourceRepository, roleRepo repository.RoleRepository, userRepo repository.UserRepository, service nt.Service) ResourceService {
 	return resourceService{
 		ResourceRepository:     resourceRepo,
 		UserResourceRepository: roleResourceRepo,
 		RoleRepository:         roleRepo,
 		UserRepository:         userRepo,
+		NatsService:            service,
 	}
 }
 

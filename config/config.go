@@ -35,6 +35,7 @@ type Config struct {
 	DBSchema   string `envconfig:"DB_SCHEMA" default:"public"`
 	DBSSLMode  string `envconfig:"DB_SSLMODE" default:"disable"`
 	CdnUrl     string `envconfig:"CDN_URL"  default:"http://localhost:8181"`
+	NatsUrl    string `envconfig:"NATS_URL" default:"nats://localhost:4222"`
 }
 
 // LoadConfig loads environment variables into the Config struct

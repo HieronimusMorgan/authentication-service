@@ -20,6 +20,7 @@ type AuthController interface {
 	VerifyPinCode(c *gin.Context)
 	ChangePinCode(c *gin.Context)
 	ForgetPinCode(c *gin.Context)
+	RefreshToken(c *gin.Context)
 	RegisterInternalToken(c *gin.Context)
 	UpdateRole(ctx *gin.Context)
 	GetListUser(ctx *gin.Context)
@@ -258,6 +259,31 @@ func (h authController) ForgetPinCode(c *gin.Context) {
 	}
 
 	handleSuccessResponse(c, http.StatusOK, "Pin reset successfully", nil)
+}
+
+func (h authController) RefreshToken(c *gin.Context) {
+	var req struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+
+	token, exist := utils.ExtractTokenClaims(c)
+	if !exist {
+		response.SendResponse(c, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	newToken, errs := h.AuthService.RefreshToken(&req, token.ClientID)
+	if errs != nil {
+		handleErrorResponse(c, http.StatusBadRequest, errs.Error(), nil)
+		return
+	}
+
+	handleSuccessResponse(c, http.StatusOK, "Token refreshed successfully", newToken)
 }
 
 func (h authController) RegisterInternalToken(c *gin.Context) {

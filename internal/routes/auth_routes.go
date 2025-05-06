@@ -14,7 +14,6 @@ func AuthRoutes(r *gin.Engine, middleware config.Middleware, authController cont
 		public.POST("/login-phone", authController.LoginPhoneNumber)
 		public.POST("/change-device", authController.ChangeDeviceID)
 		public.POST("/verify-device", authController.VerifyDeviceID)
-
 	}
 
 	protected := r.Group("/v1")
@@ -26,6 +25,7 @@ func AuthRoutes(r *gin.Engine, middleware config.Middleware, authController cont
 		protected.POST("/change-pin", authController.ChangePinCode)
 		protected.POST("/forget-pin", authController.ForgetPinCode)
 		protected.GET("/logout", authController.Logout)
+		protected.POST("/refresh-token", authController.RefreshToken)
 	}
 
 	admin := r.Group("/v1")

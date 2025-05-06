@@ -6,6 +6,7 @@ import (
 	"authentication/internal/models"
 	"authentication/internal/repository"
 	"authentication/internal/utils"
+	nt "authentication/internal/utils/nats"
 	"errors"
 	"github.com/google/uuid"
 	"log"
@@ -36,6 +37,9 @@ type AuthService interface {
 		OldPinCode string `json:"old_pin_code" binding:"required"`
 		NewPinCode string `json:"new_pin_code" binding:"required"`
 	}, clientID string) error
+	RefreshToken(req *struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}, id string) (interface{}, error)
 	RegisterInternalToken(req *struct {
 		ResourceName string `json:"resource_name" binding:"required"`
 	}) (interface{}, error)
@@ -68,22 +72,10 @@ type authService struct {
 	RedisService              utils.RedisService
 	JWTService                utils.JWTService
 	Encryption                utils.Encryption
+	NatsService               nt.Service
 }
 
-func NewAuthService(
-	authRepo repository.AuthRepository,
-	resourceRepo repository.ResourceRepository,
-	roleRepo repository.RoleRepository,
-	roleResourceRepo repository.UserResourceRepository,
-	userRepo repository.UserRepository,
-	userKeyRepo repository.UserKeyRepository,
-	userRoleRepo repository.UserRoleRepository,
-	userSessionRepo repository.UserSessionRepository,
-	userTransactionRepo repository.UserTransactionalRepository,
-	userSetting repository.UserSettingRepository,
-	redis utils.RedisService,
-	jwtService utils.JWTService,
-	Encryption utils.Encryption) AuthService {
+func NewAuthService(authRepo repository.AuthRepository, resourceRepo repository.ResourceRepository, roleRepo repository.RoleRepository, roleResourceRepo repository.UserResourceRepository, userRepo repository.UserRepository, userKeyRepo repository.UserKeyRepository, userRoleRepo repository.UserRoleRepository, userSessionRepo repository.UserSessionRepository, userTransactionRepo repository.UserTransactionalRepository, userSetting repository.UserSettingRepository, redis utils.RedisService, jwtService utils.JWTService, Encryption utils.Encryption, service nt.Service) AuthService {
 	return authService{
 		AuthRepository:            authRepo,
 		ResourceRepository:        resourceRepo,
@@ -98,6 +90,7 @@ func NewAuthService(
 		RedisService:              redis,
 		JWTService:                jwtService,
 		Encryption:                Encryption,
+		NatsService:               service,
 	}
 }
 
@@ -556,24 +549,24 @@ func (s authService) VerifyPinCode(req *struct {
 }, clientID string) (interface{}, error) {
 	data, err := utils.GetUserRedis(s.RedisService, utils.User, clientID)
 	if err != nil {
-		return nil, errors.New("User not found")
+		return nil, errors.New("user not found")
 	}
 
 	user, err := s.UserRepository.GetUserByClientID(data.ClientID)
 	if err != nil {
-		return nil, errors.New("User not found")
+		return nil, errors.New("user not found")
 	}
 
 	if user.PinCode == nil {
-		return nil, errors.New("Pin Code is not set")
+		return nil, errors.New("pin Code is not set")
 	}
 
 	err = s.Encryption.CheckPassword(*user.PinCode, req.PinCode)
 	if err != nil {
 		if updateErr := s.UserRepository.UpdatePinAttempts(data.ClientID); updateErr != nil {
-			return nil, errors.New("Invalid User")
+			return nil, errors.New("invalid User")
 		}
-		return nil, errors.New("Invalid Pin Code")
+		return nil, errors.New("invalid Pin Code")
 	}
 
 	var requestID = uuid.New().String()
@@ -585,7 +578,7 @@ func (s authService) VerifyPinCode(req *struct {
 
 	err = s.RedisService.SaveDataExpired(utils.PinVerify, requestID, 5, responseModel)
 	if err != nil {
-		return nil, errors.New("Unable to save data")
+		return nil, errors.New("unable to save data")
 	}
 
 	return responseModel, nil
@@ -597,30 +590,30 @@ func (s authService) ChangePinCode(req *struct {
 }, clientID string) error {
 	data, err := utils.GetUserRedis(s.RedisService, utils.User, clientID)
 	if err != nil {
-		return errors.New("User not found")
+		return errors.New("user not found")
 	}
 
 	user, err := s.UserRepository.GetUserByClientID(data.ClientID)
 	if err != nil {
-		return errors.New("User not found")
+		return errors.New("user not found")
 	}
 
 	if user.PinCode == nil {
-		return errors.New("Pin Code is not set")
+		return errors.New("pin Code is not set")
 	}
 
 	err = s.Encryption.CheckPassword(*user.PinCode, req.OldPinCode)
 	if err != nil {
-		return errors.New("Old Pin Code is incorrect")
+		return errors.New("old Pin Code is incorrect")
 	}
 
 	hashedNewPin, err := s.Encryption.HashPassword(req.NewPinCode)
 	if err != nil {
-		return errors.New("Invalid Pin Code")
+		return errors.New("invalid Pin Code")
 	}
 
 	if hashedNewPin == user.PinCode {
-		return errors.New("Old Pin and New Pin is same")
+		return errors.New("old Pin and New Pin is same")
 	}
 
 	user.PinCode = hashedNewPin
@@ -633,6 +626,67 @@ func (s authService) ChangePinCode(req *struct {
 		return errors.New("Unable to update pin code")
 	}
 	return nil
+}
+
+func (s authService) RefreshToken(req *struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}, id string) (interface{}, error) {
+	user, err := s.UserRepository.GetUserByClientID(id)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	userSession, err := s.UserSessionRepository.GetUserSessionByRefreshTokenAndUserID(user.UserID, req.RefreshToken)
+	if err != nil {
+		return nil, errors.New("invalid Refresh Token")
+	}
+	if userSession == nil {
+		return nil, errors.New("invalid Refresh Token")
+	}
+
+	if userSession.ExpiresAt.Before(time.Now()) {
+		return nil, errors.New("refresh Token is expired")
+	}
+
+	_ = s.RedisService.DeleteData(utils.Token, user.ClientID)
+	_ = s.RedisService.DeleteData(utils.User, user.ClientID)
+
+	resource, err := s.ResourceRepository.GetResourceByUserID(user.UserID)
+	if err != nil {
+		return nil, errors.New("unable to get resource")
+	}
+
+	var resourceName []string
+	for _, res := range *resource {
+		resourceName = append(resourceName, res.Name)
+	}
+
+	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
+	if err != nil {
+		return nil, errors.New("unable to get role")
+	}
+
+	token, err := s.JWTService.GenerateToken(*user, resourceName, role.Name)
+	if err != nil {
+		return nil, errors.New("user or Password is incorrect")
+	}
+
+	_ = s.RedisService.SaveData(utils.Token, user.ClientID, token)
+	_ = s.RedisService.SaveData(utils.User, user.ClientID, user)
+
+	userSession.SessionToken = token.AccessToken
+	userSession.RefreshToken = token.RefreshToken
+	userSession.ExpiresAt = time.Unix(token.AtExpires, 0)
+	userSession.LoginTime = time.Unix(token.AtExpires, 0)
+	userSession.UpdatedAt = time.Now()
+	userSession.UpdatedBy = user.ClientID
+
+	err = s.UserSessionRepository.UpdateSession(userSession)
+	if err != nil {
+		return nil, errors.New("unable to update session")
+	}
+
+	return token, nil
 }
 
 func (s authService) RegisterInternalToken(req *struct {

@@ -9,6 +9,7 @@ import (
 	controllercron "authentication/internal/utils/cron/controller"
 	repositorycron "authentication/internal/utils/cron/repository"
 	"authentication/internal/utils/cron/service"
+	nt "authentication/internal/utils/nats"
 	"log"
 	"os"
 	"os/signal"
@@ -45,6 +46,7 @@ func NewServerConfig() (*ServerConfig, error) {
 		JWTService: utils.NewJWTService(cfg.JWTSecret),
 	}
 
+	server.initNats()
 	server.initAesEncrypt()
 	server.initRepository()
 	server.initTransactional()
@@ -92,9 +94,10 @@ func (s *ServerConfig) initServices() {
 			s.Repository.UserSettingRepository,
 			s.Redis,
 			s.JWTService,
-			s.Encryption.EncryptionService),
+			s.Encryption.EncryptionService,
+			s.Nats.NatsService),
 		UserService:        services.NewUserService(s.Repository.UserRepository, s.Repository.UserKeyRepository, s.Repository.UserSettingRepository, s.Redis, s.JWTService, s.Encryption.EncryptionService),
-		ResourceService:    services.NewResourceService(s.Repository.ResourceRepository, s.Repository.UserResourceRepository, s.Repository.RoleRepository, s.Repository.UserRepository),
+		ResourceService:    services.NewResourceService(s.Repository.ResourceRepository, s.Repository.UserResourceRepository, s.Repository.RoleRepository, s.Repository.UserRepository, s.Nats.NatsService),
 		RoleService:        services.NewRoleService(s.Repository.RoleRepository, s.Repository.UserRepository),
 		UserSessionService: services.NewUsersSessionService(s.Repository.UserSessionRepository, s.Repository.UserRepository, s.JWTService, s.Redis),
 	}
@@ -134,5 +137,12 @@ func (s *ServerConfig) initCron() {
 func (s *ServerConfig) initAesEncrypt() {
 	s.Encryption = Encryption{
 		EncryptionService: utils.NewEncryption(s.Config.AesEncrypt, s.Config.AesFixedIV),
+	}
+}
+
+// initNats initializes the application services
+func (s *ServerConfig) initNats() {
+	s.Nats = Nats{
+		NatsService: nt.NewNatsService(s.Config.NatsUrl),
 	}
 }
