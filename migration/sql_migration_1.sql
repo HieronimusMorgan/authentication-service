@@ -300,7 +300,9 @@ USAGE
 ON
 SCHEMA
 public TO replicator;
--- Allow SELECT on the users table
+-- Allow SELECT on the user's table
 GRANT SELECT ON TABLE public.users TO replicator;
 -- Allow SELECT on the user_settings table
 GRANT SELECT ON TABLE public.user_settings TO replicator;
+-- Allow SELECT on the user_keys table
+GRANT SELECT ON TABLE public.user_keys TO replicator;

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"log"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -129,16 +130,16 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 
 	var hashedPin *string
 	if req.PinCode != nil && *req.PinCode != "" {
-		hashedPin, err = s.Encryption.HashPassword(*req.PinCode)
-		if len(*req.PinCode) < 4 {
-			return out.RegisterResponse{}, errors.New("pin Code must be 4 digits")
+		if len(*req.PinCode) < 6 {
+			return out.RegisterResponse{}, errors.New("pin Code must be 6 digits")
 		}
 		if len(*req.PinCode) > 6 {
 			return out.RegisterResponse{}, errors.New("pin Code must be 6 digits")
 		}
-		if strings.ContainsAny(*req.PinCode, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+		if !regexp.MustCompile(`^\d+$`).MatchString(*req.PinCode) {
 			return out.RegisterResponse{}, errors.New("pin Code must be numeric")
 		}
+		hashedPin, err = s.Encryption.HashPassword(*req.PinCode)
 	}
 
 	var hashDeviceID string
@@ -170,7 +171,7 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 		return out.RegisterResponse{}, errors.New("email is invalid")
 	}
 
-	//check email is exist
+	//check email exists
 	_, err = s.UserRepository.GetUserByEmail(req.Email)
 	if err == nil {
 		return out.RegisterResponse{}, errors.New("email already exist")
@@ -600,7 +601,7 @@ func (s authService) VerifyPinCode(req *struct {
 		Valid:     true,
 	}
 
-	err = s.RedisService.SaveDataExpired(utils.PinVerify, requestID, 5, responseModel)
+	err = s.RedisService.SaveDataExpired(utils.PinVerify, user.ClientID, 5, responseModel)
 	if err != nil {
 		return nil, errors.New("unable to save data")
 	}
