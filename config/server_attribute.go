@@ -97,10 +97,11 @@ func (s *ServerConfig) initServices() {
 			s.Encryption.EncryptionService,
 			s.Nats.NatsService),
 		UserService:        services.NewUserService(s.Repository.UserRepository, s.Repository.UserKeyRepository, s.Repository.UserSettingRepository, s.Redis, s.JWTService, s.Encryption.EncryptionService),
-		ResourceService:    services.NewResourceService(s.Repository.ResourceRepository, s.Repository.UserResourceRepository, s.Repository.RoleRepository, s.Repository.UserRepository, s.Nats.NatsService),
 		RoleService:        services.NewRoleService(s.Repository.RoleRepository, s.Repository.UserRepository),
 		UserSessionService: services.NewUsersSessionService(s.Repository.UserSessionRepository, s.Repository.UserRepository, s.JWTService, s.Redis),
 	}
+	s.Services.ResourceService = services.NewResourceService(s.Repository.ResourceRepository, s.Repository.UserResourceRepository, s.Repository.RoleRepository, s.Repository.UserRepository, s.Nats.NatsService, s.Services.AuthService)
+
 }
 
 // Start initializes everything and returns an error if something fails

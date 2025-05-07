@@ -19,6 +19,7 @@ func AuthRoutes(r *gin.Engine, middleware config.Middleware, authController cont
 	protected := r.Group("/v1")
 	protected.Use(middleware.AuthMiddleware.Handler())
 	{
+		protected.POST("/register-device-token", authController.RegisterDeviceToken)
 		protected.GET("/credential-key", authController.GenerateCredentialKey)
 		protected.POST("/verify-pin", authController.VerifyPinCode)
 		protected.POST("/change-password", authController.ChangePassword)

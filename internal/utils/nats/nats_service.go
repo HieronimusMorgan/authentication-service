@@ -7,7 +7,7 @@ import (
 )
 
 type Service interface {
-	RequestNotification(notification models.Notification) error
+	RequestNotification(subject string, notification models.Notification) error
 }
 
 type natsService struct {
@@ -20,7 +20,7 @@ func NewNatsService(nats string) Service {
 	}
 }
 
-func (n *natsService) RequestNotification(notification models.Notification) error {
+func (n *natsService) RequestNotification(subject string, notification models.Notification) error {
 	conn, err := nats.Connect(n.nats)
 	if err != nil {
 		return err
@@ -32,7 +32,7 @@ func (n *natsService) RequestNotification(notification models.Notification) erro
 		return err
 	}
 
-	if err := conn.Publish("notification.send", data); err != nil {
+	if err := conn.Publish(subject, data); err != nil {
 		return err
 	}
 

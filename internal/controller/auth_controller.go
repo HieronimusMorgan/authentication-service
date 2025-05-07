@@ -13,6 +13,7 @@ import (
 
 type AuthController interface {
 	Register(c *gin.Context)
+	RegisterDeviceToken(c *gin.Context)
 	Login(c *gin.Context)
 	LoginPhoneNumber(c *gin.Context)
 	ChangeDeviceID(c *gin.Context)
@@ -80,6 +81,30 @@ func (h authController) Register(c *gin.Context) {
 	}
 
 	handleSuccessResponse(c, http.StatusCreated, "User registered successfully", user)
+}
+
+func (h authController) RegisterDeviceToken(c *gin.Context) {
+	var req struct {
+		DeviceToken string `json:"device_token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+
+	token, exist := utils.ExtractTokenClaims(c)
+	if !exist {
+		response.SendResponse(c, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	errs := h.AuthService.RegisterDeviceToken(&req, token.ClientID)
+	if errs != nil {
+		handleErrorResponse(c, http.StatusBadRequest, errs.Error(), nil)
+		return
+	}
+
+	handleSuccessResponse(c, http.StatusOK, "Device token registered successfully", nil)
 }
 
 func (h authController) Login(c *gin.Context) {

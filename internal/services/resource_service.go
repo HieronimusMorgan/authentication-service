@@ -6,6 +6,7 @@ import (
 	"authentication/internal/repository"
 	nt "authentication/internal/utils/nats"
 	"errors"
+	"log"
 	"strings"
 )
 
@@ -27,15 +28,17 @@ type resourceService struct {
 	RoleRepository         repository.RoleRepository
 	UserRepository         repository.UserRepository
 	NatsService            nt.Service
+	AuthService            AuthService
 }
 
-func NewResourceService(resourceRepo repository.ResourceRepository, roleResourceRepo repository.UserResourceRepository, roleRepo repository.RoleRepository, userRepo repository.UserRepository, service nt.Service) ResourceService {
+func NewResourceService(resourceRepo repository.ResourceRepository, roleResourceRepo repository.UserResourceRepository, roleRepo repository.RoleRepository, userRepo repository.UserRepository, service nt.Service, authService AuthService) ResourceService {
 	return resourceService{
 		ResourceRepository:     resourceRepo,
 		UserResourceRepository: roleResourceRepo,
 		RoleRepository:         roleRepo,
 		UserRepository:         userRepo,
 		NatsService:            service,
+		AuthService:            authService,
 	}
 }
 
@@ -140,12 +143,12 @@ func (s resourceService) GetResources(clientID string) (interface{}, error) {
 }
 
 func (s resourceService) AssignUserResource(userID uint, resourceID uint, clientID string) (interface{}, error) {
-	user, err := s.UserRepository.GetUserByClientID(clientID)
+	admin, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.checkUserIsAdmin(user)
+	err = s.checkUserIsAdmin(admin)
 	if err != nil {
 		return nil, err
 	}
@@ -154,18 +157,50 @@ func (s resourceService) AssignUserResource(userID uint, resourceID uint, client
 	if err != nil {
 		return nil, err
 	}
+	user, err := s.UserRepository.GetUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
 
 	var userResource = models.UserResource{
 		UserID:     userID,
 		ResourceID: resourceID,
-		CreatedBy:  user.FullName,
-		UpdatedBy:  user.FullName,
+		CreatedBy:  admin.FullName,
+		UpdatedBy:  admin.FullName,
 	}
 
 	err = s.UserResourceRepository.RegisterUserResource(userResource)
 	if err != nil {
 		return nil, err
 	}
+
+	token, err := s.AuthService.UpdateToken(userID, admin.ClientID)
+	if err != nil {
+		return nil, err
+	}
+
+	if user.DeviceToken != nil {
+		notification := models.Notification{
+			TargetToken:   *user.DeviceToken,
+			Title:         "Assign User Resource",
+			Body:          "You have been assigned a new resource",
+			Priority:      "high",
+			Color:         "#1E88E5",
+			Platform:      "android",
+			ServiceSource: "authentication",
+			EventType:     "assign_user_resource",
+			ClickAction:   "OPEN_ACTIVITY",
+			Payload: map[string]string{
+				"token":         token.AccessToken,
+				"refresh_token": token.RefreshToken,
+			},
+		}
+
+		err = s.NatsService.RequestNotification("authentication", notification)
+	} else {
+		log.Println("Device token is nil, skipping notification")
+	}
+
 	return struct {
 		UserID     uint
 		ResourceID uint
@@ -176,12 +211,17 @@ func (s resourceService) AssignUserResource(userID uint, resourceID uint, client
 }
 
 func (s resourceService) RemoveAssignUserResource(userID uint, resourceID uint, clientID string) error {
-	user, err := s.UserRepository.GetUserByClientID(clientID)
+	admin, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
 		return err
 	}
 
-	err = s.checkUserIsAdmin(user)
+	err = s.checkUserIsAdmin(admin)
+	if err != nil {
+		return err
+	}
+
+	user, err := s.UserRepository.GetUserByID(userID)
 	if err != nil {
 		return err
 	}
@@ -199,6 +239,32 @@ func (s resourceService) RemoveAssignUserResource(userID uint, resourceID uint, 
 	err = s.UserResourceRepository.DeleteUserResource(userResource)
 	if err != nil {
 		return err
+	}
+
+	token, err := s.AuthService.UpdateToken(userID, admin.ClientID)
+	if err != nil {
+		return err
+	}
+
+	if user.DeviceToken != nil {
+		notification := models.Notification{
+			TargetToken:   *user.DeviceToken,
+			Title:         "Remove User Resource",
+			Body:          "You have been removed from a resource",
+			Priority:      "high",
+			Color:         "#1E88E5",
+			Platform:      "android",
+			ServiceSource: "authentication",
+			EventType:     "remove_user_resource",
+			ClickAction:   "OPEN_ACTIVITY",
+			Payload: map[string]string{
+				"token":         token.AccessToken,
+				"refresh_token": token.RefreshToken,
+			},
+		}
+		err = s.NatsService.RequestNotification("authentication", notification)
+	} else {
+		log.Println("Device token is nil, skipping notification")
 	}
 
 	return nil

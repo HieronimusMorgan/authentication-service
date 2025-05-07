@@ -16,6 +16,9 @@ import (
 
 type AuthService interface {
 	Register(req *in.RegisterRequest, deviceID string) (out.RegisterResponse, error)
+	RegisterDeviceToken(req *struct {
+		DeviceToken string `json:"device_token" binding:"required"`
+	}, clientID string) error
 	Login(req *in.LoginRequest, deviceID string) (interface{}, error)
 	ReLogin(req struct {
 		UserID       uint   `json:"user_id" binding:"required"`
@@ -37,6 +40,7 @@ type AuthService interface {
 		OldPinCode string `json:"old_pin_code" binding:"required"`
 		NewPinCode string `json:"new_pin_code" binding:"required"`
 	}, clientID string) error
+	UpdateToken(userID uint, clientID string) (*models.TokenDetails, error)
 	RefreshToken(req *struct {
 		RefreshToken string `json:"refresh_token" binding:"required"`
 	}, id string) (interface{}, error)
@@ -272,6 +276,26 @@ func (s authService) Register(req *in.RegisterRequest, deviceID string) (out.Reg
 		RefreshToken:   token.RefreshToken,
 	}
 	return responses, nil
+}
+
+func (s authService) RegisterDeviceToken(req *struct {
+	DeviceToken string `json:"device_token" binding:"required"`
+}, clientID string) error {
+	user, err := s.UserRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if user.DeviceToken == nil {
+		user.DeviceToken = &req.DeviceToken
+	} else {
+		user.DeviceToken = &req.DeviceToken
+	}
+
+	if err := s.UserRepository.UpdateUser(user); err != nil {
+		return errors.New("unable to update user")
+	}
+	return nil
 }
 
 func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, error) {
@@ -626,6 +650,84 @@ func (s authService) ChangePinCode(req *struct {
 		return errors.New("Unable to update pin code")
 	}
 	return nil
+}
+
+func (s authService) UpdateToken(userID uint, clientID string) (*models.TokenDetails, error) {
+	data, err := utils.GetUserRedis(s.RedisService, utils.User, clientID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+	admin, err := s.UserRepository.GetUserByClientID(data.ClientID)
+
+	user, err := s.UserRepository.GetUserByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	resource, err := s.ResourceRepository.GetResourceByUserID(user.UserID)
+	if err != nil {
+		return nil, errors.New("unable to get resource")
+	}
+
+	var resourceName []string
+	for _, res := range *resource {
+		resourceName = append(resourceName, res.Name)
+	}
+
+	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
+	if err != nil {
+		return nil, errors.New("unable to get role")
+	}
+
+	token, err := s.JWTService.GenerateToken(*user, resourceName, role.Name)
+	if err != nil {
+		return nil, errors.New("user or Password is incorrect")
+	}
+
+	userRedis, err := s.UserRepository.GetUserRedisByClientID(user.ClientID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	if userRedis == nil {
+		return nil, errors.New("user not found")
+	}
+	_ = s.RedisService.SaveData(utils.Token, user.ClientID, token)
+	_ = s.RedisService.SaveData(utils.User, user.ClientID, userRedis)
+
+	userSession, err := s.UserSessionRepository.GetUserSessionByUserID(user.UserID)
+	if err != nil {
+		return nil, errors.New("user session not found")
+	}
+
+	if userSession == nil {
+		userSession = &models.UserSession{
+			UserID:       user.UserID,
+			SessionToken: token.AccessToken,
+			RefreshToken: token.RefreshToken,
+			ExpiresAt:    time.Unix(token.AtExpires, 0),
+			LoginTime:    time.Now(),
+			CreatedBy:    admin.ClientID,
+			UpdatedBy:    admin.ClientID,
+		}
+		err = s.UserSessionRepository.AddUserSession(userSession)
+		if err != nil {
+			return nil, errors.New("unable to add session")
+		}
+	} else {
+		userSession.SessionToken = token.AccessToken
+		userSession.RefreshToken = token.RefreshToken
+		userSession.ExpiresAt = time.Unix(token.AtExpires, 0)
+		userSession.LoginTime = time.Now()
+		userSession.UpdatedBy = admin.ClientID
+
+		err = s.UserSessionRepository.UpdateSession(userSession)
+		if err != nil {
+			return nil, errors.New("unable to update session")
+		}
+	}
+
+	return &token, nil
 }
 
 func (s authService) RefreshToken(req *struct {
