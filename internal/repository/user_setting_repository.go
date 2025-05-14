@@ -7,7 +7,7 @@ import (
 
 type UserSettingRepository interface {
 	// Create
-	AddUserSetting(userSetting models.UserSetting) error
+	AddUserSetting(userSetting *models.UserSetting) error
 
 	// Read
 	GetUserSettingBySettingID(settingID uint) (*models.UserSetting, error)
@@ -35,7 +35,7 @@ func NewUserSettingRepository(db gorm.DB) UserSettingRepository {
 	return &userSettingRepository{db: db}
 }
 
-func (r *userSettingRepository) AddUserSetting(userSetting models.UserSetting) error {
+func (r *userSettingRepository) AddUserSetting(userSetting *models.UserSetting) error {
 	return r.db.Create(&userSetting).Error
 }
 

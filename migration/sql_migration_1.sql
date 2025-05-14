@@ -196,8 +196,10 @@ VALUES ('resource', 'Description of the resource', CURRENT_TIMESTAMP, 'system'),
        ('system', 'Operations for managing the system', CURRENT_TIMESTAMP, 'system'),
        ('auth', 'Authentication-related operations', CURRENT_TIMESTAMP, 'system'),
        ('asset', 'Asset management operations', CURRENT_TIMESTAMP, 'system'),
-       ('asset-group', 'Asset group management operations', CURRENT_TIMESTAMP, 'system');
-
+       ('asset-group', 'Asset group management operations', CURRENT_TIMESTAMP, 'system'),
+       ('password-management',
+        'A secure password management module that allows users to store, organize, and share credentials with end-to-end encryption. It supports grouping passwords, tracking access history, and securely sharing entries using RSA key wrapping and AES encryption. Built with a focus on user privacy and zero-knowledge architecture.',
+        CURRENT_TIMESTAMP, 'system');
 INSERT INTO users (client_id, username, password, first_name, last_name, full_name, phone_number, email,
                    profile_picture,
                    role_id, created_by, updated_by)

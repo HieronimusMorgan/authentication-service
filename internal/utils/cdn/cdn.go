@@ -61,7 +61,7 @@ func UploadImageToCDN(ipCdn string, file *multipart.FileHeader, clientID, authTo
 		}
 	}()
 
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusOK {
 		return out.ImageResponse{}, fmt.Errorf("failed to upload image: %s", resp.Status)
 	}
 

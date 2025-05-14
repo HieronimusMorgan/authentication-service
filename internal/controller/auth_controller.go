@@ -80,7 +80,7 @@ func (h authController) Register(c *gin.Context) {
 		return
 	}
 
-	handleSuccessResponse(c, http.StatusCreated, "User registered successfully", user)
+	handleSuccessResponse(c, http.StatusOK, "User registered successfully", user)
 }
 
 func (h authController) RegisterDeviceToken(c *gin.Context) {
@@ -327,7 +327,7 @@ func (h authController) RegisterInternalToken(c *gin.Context) {
 		return
 	}
 
-	handleSuccessResponse(c, http.StatusCreated, "Internal token registered successfully", token)
+	handleSuccessResponse(c, http.StatusOK, "Internal token registered successfully", token)
 }
 
 func (h authController) UpdateRole(ctx *gin.Context) {

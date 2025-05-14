@@ -308,15 +308,15 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		return nil, errors.New("username or Password is incorrect")
 	}
 
-	if deviceID == "MOBILE" && user.DeviceID != nil {
-		hashDeviceID, err := s.Encryption.Encrypt(req.DeviceID)
-		if err != nil {
-			return nil, errors.New("Device ID is invalid")
-		}
-		if !strings.EqualFold(*user.DeviceID, hashDeviceID) {
-			return nil, errors.New("User is logged in another device")
-		}
-	}
+	//if deviceID == "MOBILE" && user.DeviceID != nil {
+	//	hashDeviceID, err := s.Encryption.Encrypt(req.DeviceID)
+	//	if err != nil {
+	//		return nil, errors.New("Device ID is invalid")
+	//	}
+	//	if !strings.EqualFold(*user.DeviceID, hashDeviceID) {
+	//		return nil, errors.New("User is logged in another device")
+	//	}
+	//}
 
 	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
 	if err != nil {
@@ -335,7 +335,16 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 
 	userSetting, err := s.UserSettingRepository.GetUserSettingByUserID(user.UserID)
 	if err != nil {
-		return nil, errors.New("User setting not found")
+		newUserSetting := models.UserSetting{
+			UserID:          user.UserID,
+			GroupInviteType: 1,
+			CreatedAt:       time.Now(),
+			UpdatedAt:       time.Now(),
+		}
+		if addErr := s.UserSettingRepository.AddUserSetting(&newUserSetting); addErr != nil {
+			return nil, errors.New("unable to create user setting")
+		}
+		userSetting = &newUserSetting
 	}
 
 	userSettingModel := out.UserSettingResponse{
