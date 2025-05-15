@@ -26,6 +26,16 @@ type UserRoleResourceSettingResponse struct {
 	UserSetting    UserSettingResponse `json:"user_setting"`
 }
 
+type UserRoleResponse struct {
+	UserID         uint   `json:"user_id"`
+	ClientID       string `json:"client_id"`
+	Username       string `json:"username"`
+	FirstName      string `json:"first_name"`
+	LastName       string `json:"last_name"`
+	PhoneNumber    string `json:"phone_number"`
+	ProfilePicture string `json:"profile_picture"`
+}
+
 type UserSettingResponse struct {
 	SettingID             uint          `json:"setting_id" binding:"required"`
 	GroupInviteType       int           `json:"group_invite_type"`

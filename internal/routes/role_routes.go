@@ -14,6 +14,7 @@ func RoleRoutes(r *gin.Engine, middleware config.Middleware, roleController cont
 		protected.PUT("/update/:id", roleController.UpdateRole)
 		protected.GET("", roleController.GetListRole)
 		protected.GET("/users", roleController.GetListRoleUsers)
+		protected.GET("/users/:id", roleController.GetListUserRole)
 		protected.GET("/:id", roleController.GetRoleById)
 		protected.DELETE("/:id", roleController.DeleteRoleById)
 	}

@@ -20,6 +20,7 @@ type UserRepository interface {
 	GetAllUsers() (*[]models.Users, error)
 	GetUsers() (*[]models.Users, error)
 	GetUserByRole(role uint) (*[]models.Users, error)
+	GetUserByRolePagination(role uint, index, size int) (*[]out.UserRoleResponse, error)
 	GetUserByPhoneNumber(number string) (*models.Users, error)
 	GetUserByClientID(clientID string) (*models.Users, error)
 	GetUserByPinCodeAndClientID(pinCode, clientID string) (*models.Users, error)
@@ -38,6 +39,7 @@ type UserRepository interface {
 	GetUserRedisByClientID(clientID string) (*models.UserRedis, error)
 	SaveUserKey(keys *models.UserKey) error
 	GetUserKey(userID uint) (*models.UserKey, error)
+	GetCountUserByRole(roleID uint) (int64, error)
 }
 
 type userRepository struct {
@@ -134,6 +136,27 @@ func (r userRepository) GetUserByRole(role uint) (*[]models.Users, error) {
 		return nil, err
 	}
 	return &users, nil
+}
+
+func (r userRepository) GetUserByRolePagination(role uint, index, size int) (*[]out.UserRoleResponse, error) {
+
+	query := `
+		SELECT 
+			u.user_id, u.client_id, u.username, u.first_name, u.last_name, u.phone_number, u.profile_picture
+		FROM users u
+		LEFT JOIN user_roles ur ON ur.user_id = u.user_id
+		LEFT JOIN roles r ON r.role_id = ur.role_id
+		WHERE r.role_id = ? AND u.deleted_at IS NULL
+		ORDER BY u.user_id ASC
+		LIMIT ? OFFSET ?;
+	`
+
+	var rows []out.UserRoleResponse
+	if err := r.db.Raw(query, role, size, (index-1)*size).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	return &rows, nil
 }
 
 func (r userRepository) GetUserByClientID(clientID string) (*models.Users, error) {
@@ -524,4 +547,18 @@ func (r userRepository) GetUserKey(userID uint) (*models.UserKey, error) {
 		return nil, err
 	}
 	return &userKey, nil
+}
+
+func (r userRepository) GetCountUserByRole(roleID uint) (int64, error) {
+	var count int64
+	query := `
+		SELECT COUNT(ur.*)
+		FROM roles r
+		JOIN user_roles ur ON ur.role_id = r.role_id
+		WHERE r.role_id = ?
+	`
+	if err := r.db.Raw(query, roleID).Scan(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }

@@ -11,6 +11,8 @@ const (
 	ClientID      = "client_id"
 	UserID        = "user_id"
 	RoleID        = "role_id"
+	PageIndex     = "page_index"
+	PageSize      = "page_size"
 )
 
 const (

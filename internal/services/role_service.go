@@ -21,7 +21,8 @@ type RoleService interface {
 	GetListRole(clientID string) (interface{}, error)
 	GetRoleById(roleID uint, clientID string) (interface{}, error)
 	DeleteRole(roleID uint, clientID string) error
-	GetListRoleUsers(clientID string) (interface{}, error)
+	GetListRoleUsers(clientID string, index int, size int) (interface{}, int64, error)
+	GetListUserRole(clientID string, roleID uint, index int, size int) (interface{}, int64, error)
 }
 
 type roleService struct {
@@ -54,7 +55,7 @@ func (s roleService) RegisterRole(req *struct {
 		CreatedBy:   user.FullName,
 		UpdatedBy:   user.FullName,
 	}
-	err = s.RoleRepository.RegisterRole(&role)
+	err = s.RoleRepository.RegisterRole(role)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +86,7 @@ func (s roleService) UpdateRole(roleID uint, req *struct {
 		role.Description = req.Description
 	}
 	role.UpdatedBy = admin.FullName
-	err = s.RoleRepository.UpdateRole(&role)
+	err = s.RoleRepository.UpdateRole(role)
 
 	if err != nil {
 		return nil, err
@@ -104,7 +105,7 @@ func (s roleService) GetListRole(clientID string) (interface{}, error) {
 		return nil, err
 	}
 
-	roles, err := s.RoleRepository.GetAllRoles()
+	roles, err := s.RoleRepository.GetAllRoles(0, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +166,7 @@ func (s roleService) DeleteRole(roleID uint, clientID string) error {
 	}
 
 	role.DeletedBy = user.FullName
-	err = s.RoleRepository.DeleteRole(&role)
+	err = s.RoleRepository.DeleteRole(*role)
 	if err != nil {
 		return err
 	}
@@ -173,15 +174,20 @@ func (s roleService) DeleteRole(roleID uint, clientID string) error {
 	return nil
 }
 
-func (s roleService) GetListRoleUsers(clientID string) (interface{}, error) {
+func (s roleService) GetListRoleUsers(clientID string, index, size int) (interface{}, int64, error) {
 	_, err := s.UserRepository.GetUserByClientID(clientID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	roles, err := s.RoleRepository.GetAllRoles()
+	roles, err := s.RoleRepository.GetAllRoles(index, size)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+
+	roleCount, err := s.RoleRepository.GetCountRole()
+	if err != nil {
+		return nil, 0, err
 	}
 
 	var roleResponses []struct {
@@ -192,7 +198,7 @@ func (s roleService) GetListRoleUsers(clientID string) (interface{}, error) {
 	for _, role := range *roles {
 		users, err := s.UserRepository.GetUserByRole(role.RoleID)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		var userResponses []out.UserResponse
@@ -219,5 +225,37 @@ func (s roleService) GetListRoleUsers(clientID string) (interface{}, error) {
 		})
 	}
 
-	return roleResponses, nil
+	return roleResponses, roleCount, nil
+}
+
+func (s roleService) GetListUserRole(clientID string, roleID uint, index, size int) (interface{}, int64, error) {
+	_, err := s.UserRepository.GetUserByClientID(clientID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	users, err := s.UserRepository.GetUserByRolePagination(roleID, index, size)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	userCount, err := s.UserRepository.GetCountUserByRole(roleID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var userResponses []out.UserResponse
+	for _, user := range *users {
+		userResponses = append(userResponses, out.UserResponse{
+			UserID:         user.UserID,
+			ClientID:       user.ClientID,
+			Username:       user.Username,
+			FirstName:      user.FirstName,
+			LastName:       user.LastName,
+			PhoneNumber:    user.PhoneNumber,
+			ProfilePicture: &user.ProfilePicture,
+		})
+	}
+
+	return userResponses, userCount, nil
 }

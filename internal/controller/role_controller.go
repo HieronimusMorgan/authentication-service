@@ -12,6 +12,7 @@ type RoleController interface {
 	AddRole(ctx *gin.Context)
 	UpdateRole(ctx *gin.Context)
 	GetListRole(ctx *gin.Context)
+	GetListUserRole(ctx *gin.Context)
 	GetRoleById(ctx *gin.Context)
 	DeleteRoleById(ctx *gin.Context)
 	GetListRoleUsers(ctx *gin.Context)
@@ -117,6 +118,50 @@ func (h roleController) GetListRole(ctx *gin.Context) {
 	response.SendResponse(ctx, 200, "Roles retrieved successfully", roles, nil)
 }
 
+func (h roleController) GetListUserRole(ctx *gin.Context) {
+	id := ctx.Param("id")
+	if id == "" {
+		response.SendResponse(ctx, 400, "Role ID is required", nil, nil)
+		return
+	}
+
+	roleID, err := utils.ConvertToUint(id)
+	if err != nil {
+		response.SendResponse(ctx, 400, "Role ID must be a number", nil, err.Error())
+		return
+	}
+
+	pageIndex, pageSize, err := utils.GetPageIndexPageSize(ctx)
+	if err != nil {
+		response.SendResponse(ctx, 400, "Invalid page index or page size", nil, err.Error())
+		return
+	}
+
+	token, exist := utils.ExtractTokenClaims(ctx)
+	if !exist {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, "Token not found")
+		return
+	}
+
+	userRoles, total, err := h.RoleService.GetListUserRole(token.ClientID, roleID, pageIndex, pageSize)
+	if err != nil {
+		response.SendResponseList(ctx, 500, "Failed to get list of user roles", response.PagedData{
+			Total:     total,
+			PageIndex: pageIndex,
+			PageSize:  pageSize,
+			Items:     nil,
+		}, err.Error())
+		return
+	}
+
+	response.SendResponseList(ctx, 200, "User roles retrieved successfully", response.PagedData{
+		Total:     total,
+		PageIndex: pageIndex,
+		PageSize:  pageSize,
+		Items:     userRoles,
+	}, nil)
+}
+
 func (h roleController) GetRoleById(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
@@ -174,17 +219,33 @@ func (h roleController) DeleteRoleById(ctx *gin.Context) {
 }
 
 func (h roleController) GetListRoleUsers(ctx *gin.Context) {
+	pageIndex, pageSize, err := utils.GetPageIndexPageSize(ctx)
+	if err != nil {
+		response.SendResponse(ctx, 400, "Invalid page index or page size", nil, err.Error())
+		return
+	}
+
 	token, exist := utils.ExtractTokenClaims(ctx)
 	if !exist {
 		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, "Token not found")
 		return
 	}
 
-	users, err := h.RoleService.GetListRoleUsers(token.ClientID)
+	roleUsers, total, err := h.RoleService.GetListRoleUsers(token.ClientID, pageIndex, pageSize)
 	if err != nil {
-		response.SendResponse(ctx, 500, "Failed to get list of role users", nil, err.Error())
+		response.SendResponseList(ctx, 500, "Failed to get list assets", response.PagedData{
+			Total:     total,
+			PageIndex: pageIndex,
+			PageSize:  pageSize,
+			Items:     nil,
+		}, err.Error())
 		return
 	}
 
-	response.SendResponse(ctx, 200, "Role users retrieved successfully", users, nil)
+	response.SendResponseList(ctx, 200, "Get list assets successfully", response.PagedData{
+		Total:     total,
+		PageIndex: pageIndex,
+		PageSize:  pageSize,
+		Items:     roleUsers,
+	}, nil)
 }
