@@ -9,6 +9,8 @@ services:
     environment:
       APP_PORT: ${APP_PORT}
       JWT_SECRET: ${JWT_SECRET}
+      AES_ENCRYPT: ${AES_ENCRYPT}
+      AES_FIXED_IV: ${AES_FIXED_IV}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       DB_USER: ${DB_USER}
@@ -20,4 +22,6 @@ services:
       REDIS_PORT: ${REDIS_PORT}
       REDIS_DB: ${REDIS_DB}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      CDN_URL: ${CDN_URL}
+      NATS_URL: ${NATS_URL}
     restart: always
