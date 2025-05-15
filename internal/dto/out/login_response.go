@@ -7,6 +7,9 @@ type LoginResponse struct {
 	FirstName      string              `json:"first_name"`
 	LastName       string              `json:"last_name"`
 	PhoneNumber    string              `json:"phone_number"`
+	Email          string              `json:"email"`
+	DeviceID       *string             `json:"device_id,omitempty"`
+	DeviceToken    *string             `json:"device_token,omitempty"`
 	ProfilePicture *string             `json:"profile_picture,omitempty"`
 	UserSetting    UserSettingResponse `json:"user_setting"`
 	RefreshToken   string              `json:"refresh_token"`

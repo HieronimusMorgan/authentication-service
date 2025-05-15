@@ -308,24 +308,24 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		return nil, errors.New("username or Password is incorrect")
 	}
 
-	//if deviceID == "MOBILE" && user.DeviceID != nil {
-	//	hashDeviceID, err := s.Encryption.Encrypt(req.DeviceID)
-	//	if err != nil {
-	//		return nil, errors.New("Device ID is invalid")
-	//	}
-	//	if !strings.EqualFold(*user.DeviceID, hashDeviceID) {
-	//		return nil, errors.New("User is logged in another device")
-	//	}
-	//}
+	if deviceID == "MOBILE" && user.DeviceID != nil {
+		hashDeviceID, err := s.Encryption.Encrypt(req.DeviceID)
+		if err != nil {
+			return nil, errors.New("device ID is invalid")
+		}
+		if !strings.EqualFold(*user.DeviceID, hashDeviceID) {
+			return nil, errors.New("user is logged in another device")
+		}
+	}
 
 	role, err := s.RoleRepository.GetRoleByID(user.RoleID)
 	if err != nil {
-		return nil, errors.New("Unable to get role")
+		return nil, errors.New("unable to get role")
 	}
 
 	resource, err := s.ResourceRepository.GetResourceByUserID(user.UserID)
 	if err != nil {
-		return nil, errors.New("Unable to get resource")
+		return nil, errors.New("unable to get resource")
 	}
 
 	var resourceName []string
@@ -355,16 +355,16 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 
 	token, err := s.JWTService.GenerateToken(*user, resourceName, role.Name)
 	if err != nil {
-		return nil, errors.New("User or Password is incorrect")
+		return nil, errors.New("user or Password is incorrect")
 	}
 
 	userRedis, err := s.UserRepository.GetUserRedisByClientID(user.ClientID)
 	if err != nil {
-		return nil, errors.New("User not found")
+		return nil, errors.New("user not found")
 	}
 
 	if userRedis == nil {
-		return nil, errors.New("User not found")
+		return nil, errors.New("user not found")
 	}
 
 	_ = s.RedisService.SaveData(utils.Token, user.ClientID, token)
@@ -384,7 +384,7 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		if err != nil {
 			return out.RegisterResponse{}, errors.New("unable to generate user key")
 		}
-		// Save user key to database
+
 		if err := s.UserRepository.SaveUserKey(userKeys); err != nil {
 			return out.RegisterResponse{}, errors.New("unable to save user key")
 		}
@@ -397,6 +397,7 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
 		PhoneNumber:    phoneNumber,
+		Email:          user.Email,
 		ProfilePicture: user.ProfilePicture,
 		UserSetting:    userSettingModel,
 		Token:          token.AccessToken,
@@ -411,12 +412,12 @@ func (s authService) ReLogin(req struct {
 }) (interface{}, error) {
 	userSession, err := s.UserSessionRepository.GetUserSessionByRefreshTokenAndUserID(req.UserID, req.RefreshToken)
 	if err != nil {
-		return nil, errors.New("Invalid Refresh Token")
+		return nil, errors.New("invalid Refresh Token")
 	}
 
 	user, err := s.UserRepository.GetUserByID(userSession.UserID)
 	if err != nil {
-		return nil, errors.New("Invalid User")
+		return nil, errors.New("invalid User")
 	}
 
 	return s.Login(&in.LoginRequest{
@@ -427,28 +428,32 @@ func (s authService) ReLogin(req struct {
 func (s authService) LoginPhoneNumber(req *in.LoginPhoneNumber, deviceID string) (interface{}, error) {
 	hashPhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
 	if err != nil {
-		return nil, errors.New("Phone Number is invalid")
+		return nil, errors.New("phone Number is invalid")
 	}
 
 	user, err := s.UserRepository.GetUserByPhoneNumber(hashPhoneNumber)
 	if err != nil {
-		return nil, errors.New("Phone Number is invalid")
+		return nil, errors.New("phone Number is invalid")
 	}
 	if user.PinCode == nil {
-		return nil, errors.New("Pin Code is not set")
+		return nil, errors.New("pin Code is not set")
 	}
 
 	err = s.Encryption.CheckPassword(*user.PinCode, req.PinCode)
 	if err != nil {
 		if updateErr := s.UserRepository.UpdatePinAttempts(user.ClientID); updateErr != nil {
-			return nil, errors.New("Invalid User")
+			return nil, errors.New("invalid User")
 		}
-		return nil, errors.New("Invalid Pin Code")
+		return nil, errors.New("invalid Pin Code")
 	}
 
-	if deviceID == "MOBILE" {
-		if user.DeviceID != &req.DeviceID {
-			return nil, errors.New("User is logged in another device")
+	if deviceID == "MOBILE" && req.DeviceID != "" && (user.DeviceID == nil || *user.DeviceID != req.DeviceID) {
+		hashDeviceID, err := s.Encryption.Encrypt(req.DeviceID)
+		if err != nil {
+			return nil, errors.New("device ID is invalid")
+		}
+		if err := s.UserRepository.UpdateDeviceID(user.UserID, hashDeviceID); err != nil {
+			return nil, errors.New("unable to update device ID")
 		}
 	}
 
@@ -483,12 +488,18 @@ func (s authService) LoginPhoneNumber(req *in.LoginPhoneNumber, deviceID string)
 		phoneNumber = decrypt
 	}
 
+	decryptDeviceID := utils.DecryptOptionalString(user.DeviceID, s.Encryption)
+	decryptDeviceToken := utils.DecryptOptionalString(user.DeviceToken, s.Encryption)
+
 	responses := out.LoginResponse{
 		UserID:         user.UserID,
 		Username:       user.Username,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
 		PhoneNumber:    phoneNumber,
+		Email:          user.Email,
+		DeviceID:       decryptDeviceID,
+		DeviceToken:    decryptDeviceToken,
 		ProfilePicture: user.ProfilePicture,
 		Token:          token.AccessToken,
 		RefreshToken:   token.RefreshToken,
@@ -502,12 +513,12 @@ func (s authService) ChangeDeviceID(req *struct {
 }) (interface{}, error) {
 	hashPhoneNumber, err := s.Encryption.Encrypt(req.PhoneNumber)
 	if err != nil {
-		return nil, errors.New("Phone Number is invalid")
+		return nil, errors.New("phone Number is invalid")
 	}
 
 	user, err := s.UserRepository.GetUserByPhoneNumber(hashPhoneNumber)
 	if err != nil {
-		return nil, errors.New("Phone Number is invalid")
+		return nil, errors.New("phone Number is invalid")
 	}
 	hashDeviceID, err := s.Encryption.Encrypt(req.DeviceID)
 	if err != nil {

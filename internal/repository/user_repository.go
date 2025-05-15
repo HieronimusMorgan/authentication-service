@@ -40,6 +40,7 @@ type UserRepository interface {
 	SaveUserKey(keys *models.UserKey) error
 	GetUserKey(userID uint) (*models.UserKey, error)
 	GetCountUserByRole(roleID uint) (int64, error)
+	UpdateDeviceID(userID uint, deviceID string) error
 }
 
 type userRepository struct {
@@ -561,4 +562,14 @@ func (r userRepository) GetCountUserByRole(roleID uint) (int64, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+func (r userRepository) UpdateDeviceID(userID uint, deviceID string) error {
+	if err := r.db.Table(utils.TableUsersName).Model(&models.Users{}).
+		Where("user_id = ?", userID).
+		Update("device_id", deviceID).
+		Error; err != nil {
+		return err
+	}
+	return nil
 }

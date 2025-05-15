@@ -37,6 +37,17 @@ func ValidateUsername(username string) error {
 	return nil
 }
 
+func DecryptOptionalString(value *string, encryption Encryption) *string {
+	if value == nil {
+		return nil
+	}
+	decrypted, err := encryption.Decrypt(*value)
+	if err != nil {
+		return value
+	}
+	return &decrypted
+}
+
 func ConvertToUint(input string) (uint, error) {
 	parsed, err := strconv.ParseUint(input, 10, 32)
 	if err != nil {
