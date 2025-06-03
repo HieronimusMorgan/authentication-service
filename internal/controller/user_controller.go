@@ -33,7 +33,6 @@ func NewUserController(serviceUser services.UserService, jwtService utils.JWTSer
 }
 
 func (h userController) GetProfile(c *gin.Context) {
-	utils.SendEmail([]string{"morganhero35@gmail.com"}, "Test Email", "This is a test email body")
 	token, exist := utils.ExtractTokenClaims(c)
 	if !exist {
 		response.SendResponse(c, http.StatusBadRequest, "Error", nil, "Token not found")
