@@ -377,6 +377,13 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 	} else {
 		phoneNumber = decrypt
 	}
+	var deviceIdResponse string
+	decrypt, err = s.Encryption.Decrypt(*user.DeviceID)
+	if err != nil {
+		deviceIdResponse = user.PhoneNumber
+	} else {
+		deviceIdResponse = decrypt
+	}
 
 	userKey, err := s.UserKeyRepository.GetUserKeyByUserID(user.UserID)
 	if userKey == nil && err != nil {
@@ -398,7 +405,7 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		LastName:       user.LastName,
 		PhoneNumber:    phoneNumber,
 		Email:          user.Email,
-		DeviceID:       user.DeviceID,
+		DeviceID:       &deviceIdResponse,
 		DeviceToken:    user.DeviceToken,
 		ProfilePicture: user.ProfilePicture,
 		UserSetting:    userSettingModel,
