@@ -97,7 +97,7 @@ func InitDatabase(cfg *Config) *gorm.DB {
 		maxRetries := 5
 		for i := 1; i <= maxRetries; i++ {
 			db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-				Logger:         logger.Default.LogMode(logger.Info),
+				Logger:         logger.Default.LogMode(logger.Silent),
 				NamingStrategy: schemaNamingStrategy(cfg.DBSchema),
 			})
 			if err == nil {

@@ -59,7 +59,7 @@ func (h authController) Register(c *gin.Context) {
 		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
 		return
 	}
-	var deviceID = c.GetHeader("Device-ID")
+	var deviceID = c.GetHeader("Device-Type")
 
 	if deviceID != "WEB" && deviceID != "MOBILE" {
 		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-ID", nil)
@@ -109,7 +109,7 @@ func (h authController) RegisterDeviceToken(c *gin.Context) {
 
 func (h authController) Login(c *gin.Context) {
 	var req in.LoginRequest
-	var deviceID = c.GetHeader("Device-ID")
+	var deviceID = c.GetHeader("Device-Type")
 
 	if deviceID != "WEB" && deviceID != "MOBILE" {
 		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-ID", nil)
@@ -140,7 +140,7 @@ func (h authController) Login(c *gin.Context) {
 
 func (h authController) LoginPhoneNumber(c *gin.Context) {
 	var req in.LoginPhoneNumber
-	var deviceID = c.GetHeader("Device-ID")
+	var deviceID = c.GetHeader("Device-Type")
 
 	if deviceID != "WEB" && deviceID != "MOBILE" {
 		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-ID", nil)
