@@ -308,13 +308,13 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		return nil, errors.New("username or Password is incorrect")
 	}
 
-	if deviceID == "MOBILE" && user.DeviceID != nil {
+	if deviceID == "MOBILE" && req.DeviceID != "" && (user.DeviceID == nil || *user.DeviceID != req.DeviceID) {
 		hashDeviceID, err := s.Encryption.Encrypt(req.DeviceID)
 		if err != nil {
 			return nil, errors.New("device ID is invalid")
 		}
-		if !strings.EqualFold(*user.DeviceID, hashDeviceID) {
-			return nil, errors.New("user is logged in another device")
+		if err := s.UserRepository.UpdateDeviceID(user.UserID, hashDeviceID); err != nil {
+			return nil, errors.New("unable to update device ID")
 		}
 	}
 
@@ -398,6 +398,8 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		LastName:       user.LastName,
 		PhoneNumber:    phoneNumber,
 		Email:          user.Email,
+		DeviceID:       user.DeviceID,
+		DeviceToken:    user.DeviceToken,
 		ProfilePicture: user.ProfilePicture,
 		UserSetting:    userSettingModel,
 		Token:          token.AccessToken,
