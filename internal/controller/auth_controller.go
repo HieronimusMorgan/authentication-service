@@ -26,6 +26,7 @@ type AuthController interface {
 	UpdateRole(ctx *gin.Context)
 	GetListUser(ctx *gin.Context)
 	GetUserByID(ctx *gin.Context)
+	ForgotPassword(ctx *gin.Context)
 	ChangePassword(ctx *gin.Context)
 	GenerateCredentialKey(ctx *gin.Context)
 	Logout(ctx *gin.Context)
@@ -62,7 +63,7 @@ func (h authController) Register(c *gin.Context) {
 	var deviceID = c.GetHeader("Device-Type")
 
 	if deviceID != "WEB" && deviceID != "MOBILE" {
-		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-ID", nil)
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-Type", nil)
 		return
 	}
 
@@ -112,7 +113,7 @@ func (h authController) Login(c *gin.Context) {
 	var deviceID = c.GetHeader("Device-Type")
 
 	if deviceID != "WEB" && deviceID != "MOBILE" {
-		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-ID", nil)
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-Type", nil)
 		return
 	}
 
@@ -143,7 +144,7 @@ func (h authController) LoginPhoneNumber(c *gin.Context) {
 	var deviceID = c.GetHeader("Device-Type")
 
 	if deviceID != "WEB" && deviceID != "MOBILE" {
-		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-ID", nil)
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid or missing Device-Type", nil)
 		return
 	}
 
@@ -397,6 +398,25 @@ func (h authController) GetUserByID(ctx *gin.Context) {
 	}
 
 	response.SendResponse(ctx, 200, "User retrieved successfully", user, nil)
+}
+
+func (h authController) ForgotPassword(ctx *gin.Context) {
+	var req struct {
+		Email string `json:"email" binding:"required"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.SendResponse(ctx, 400, "Invalid request", nil, err)
+		return
+	}
+
+	errs := h.AuthService.RequestForgotPassword(&req)
+	if errs != nil {
+		response.SendResponse(ctx, http.StatusBadRequest, "Error", nil, errs)
+		return
+	}
+
+	response.SendResponse(ctx, 200, "Password reset request successful", nil, nil)
 }
 
 func (h authController) ChangePassword(ctx *gin.Context) {

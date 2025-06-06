@@ -471,7 +471,7 @@ func (r userRepository) GetUserRedisByClientID(clientID string) (*models.UserRed
 		DeviceID              *string
 		SettingID             uint
 		GroupInviteType       int
-		GroupInviteDisallowed pq.Int32Array
+		GroupInviteDisallowed []int32
 	}
 
 	query := `

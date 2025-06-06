@@ -101,6 +101,9 @@ func (a *encryption) CheckPassword(hash, password string) error {
 }
 
 func ValidatePhoneNumber(phone string) error {
+	if len(phone) >= 2 && phone[:2] == "08" {
+		phone = "+62" + phone[1:]
+	}
 	pattern := `^\+62\d{8,12}$`
 	matched, err := regexp.MatchString(pattern, phone)
 	if err != nil {

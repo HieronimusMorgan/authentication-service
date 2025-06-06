@@ -61,6 +61,9 @@ type AuthService interface {
 	}, clientID string) error
 	GetUserByID(userID uint, clientID string) (interface{}, error)
 	GenerateCredentialKey(clientID string) (interface{}, error)
+	RequestForgotPassword(req *struct {
+		Email string `json:"email" binding:"required"`
+	}) error
 }
 
 type authService struct {
@@ -377,12 +380,15 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 	} else {
 		phoneNumber = decrypt
 	}
-	var deviceIdResponse string
-	decrypt, err = s.Encryption.Decrypt(*user.DeviceID)
-	if err != nil {
-		deviceIdResponse = user.PhoneNumber
-	} else {
-		deviceIdResponse = decrypt
+
+	var deviceIdResponse *string
+	if user.DeviceID != nil {
+		decrypt, err = s.Encryption.Decrypt(*user.DeviceID)
+		if err != nil {
+			deviceIdResponse = &user.PhoneNumber
+		} else {
+			deviceIdResponse = &decrypt
+		}
 	}
 
 	userKey, err := s.UserKeyRepository.GetUserKeyByUserID(user.UserID)
@@ -405,7 +411,7 @@ func (s authService) Login(req *in.LoginRequest, deviceID string) (interface{}, 
 		LastName:       user.LastName,
 		PhoneNumber:    phoneNumber,
 		Email:          user.Email,
-		DeviceID:       &deviceIdResponse,
+		DeviceID:       deviceIdResponse,
 		DeviceToken:    user.DeviceToken,
 		ProfilePicture: user.ProfilePicture,
 		UserSetting:    userSettingModel,
@@ -1032,4 +1038,33 @@ func (s authService) GenerateCredentialKey(clientID string) (interface{}, error)
 	_ = s.RedisService.SaveDataExpired(utils.CredentialKey, data.ClientID, 10, credentialKeyMap)
 
 	return credentialKey, nil
+}
+
+func (s authService) RequestForgotPassword(req *struct {
+	Email string `json:"email" binding:"required"`
+}) error {
+
+	if err := utils.ValidateEmail(req.Email); err != nil {
+		return errors.New("email is invalid")
+	}
+
+	user, err := s.UserRepository.GetUserByEmail(req.Email)
+	if err != nil {
+		return errors.New("email not found")
+	}
+
+	requestID := uuid.New().String()
+	_ = s.RedisService.SaveDataExpired(utils.ForgotPassword, requestID, 10, user)
+	// TODO: URL should be configurable
+	email := models.Email{
+		To:       user.Email,
+		FullName: user.FullName,
+		Subject:  "Forgot Password Request",
+		URL:      "http://192.168.1.170:8000/v1/reset-redirect?request_id=" + requestID,
+	}
+
+	if err := s.NatsService.PublishEmail("forgot_password", email); err != nil {
+		return errors.New("failed to send email")
+	}
+	return nil
 }

@@ -20,5 +20,4 @@ func ResourceRoutes(r *gin.Engine, middleware config.Middleware, resourceControl
 		protected.GET("/user/:id", resourceController.GetResourceUserById)
 		protected.DELETE("/:id", resourceController.DeleteResourceById)
 	}
-
 }
