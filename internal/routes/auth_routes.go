@@ -14,6 +14,7 @@ func AuthRoutes(r *gin.Engine, middleware config.Middleware, authController cont
 		public.POST("/login", authController.Login)
 		public.POST("/forgot-password", authController.ForgotPassword)
 		public.POST("/login-phone", authController.LoginPhoneNumber)
+		public.POST("/reset-password", authController.ResetPassword)
 		public.POST("/change-device", authController.ChangeDeviceID)
 		public.POST("/verify-device", authController.VerifyDeviceID)
 		public.GET("/reset-redirect", utils.ResetRedirectHandler)

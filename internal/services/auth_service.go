@@ -64,6 +64,11 @@ type AuthService interface {
 	RequestForgotPassword(req *struct {
 		Email string `json:"email" binding:"required"`
 	}) error
+	ResetPassword(req *struct {
+		NewPassword     string `json:"new_password" binding:"required"`
+		ConfirmPassword string `json:"confirm_password" binding:"required"`
+		RequestID       string `json:"request_id" binding:"required"`
+	}) error
 }
 
 type authService struct {
@@ -1066,5 +1071,40 @@ func (s authService) RequestForgotPassword(req *struct {
 	if err := s.NatsService.PublishEmail("forgot_password", email); err != nil {
 		return errors.New("failed to send email")
 	}
+	return nil
+}
+
+func (s authService) ResetPassword(req *struct {
+	NewPassword     string `json:"new_password" binding:"required"`
+	ConfirmPassword string `json:"confirm_password" binding:"required"`
+	RequestID       string `json:"request_id" binding:"required"`
+}) error {
+
+	if req.NewPassword != req.ConfirmPassword {
+		return errors.New("password and confirm password do not match")
+	}
+
+	user, err := utils.GetUserRedis(s.RedisService, utils.ForgotPassword, req.RequestID)
+	if err != nil {
+		return errors.New("invalid request ID")
+	}
+
+	checkuser, err := s.UserRepository.GetUserByEmail(user.Email)
+	if err != nil || checkuser.UserID != user.UserID {
+		return errors.New("invalid user")
+	}
+
+	hashedPassword, err := s.Encryption.HashPassword(req.NewPassword)
+	if err != nil {
+		return errors.New("invalid Password")
+	}
+
+	user.Password = *hashedPassword
+	user.UpdatedBy = user.ClientID
+
+	if err := s.UserRepository.UpdateUser(user); err != nil {
+		return errors.New("unable to update password")
+	}
+
 	return nil
 }

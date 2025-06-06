@@ -16,6 +16,7 @@ type AuthController interface {
 	RegisterDeviceToken(c *gin.Context)
 	Login(c *gin.Context)
 	LoginPhoneNumber(c *gin.Context)
+	ResetPassword(c *gin.Context)
 	ChangeDeviceID(c *gin.Context)
 	VerifyDeviceID(c *gin.Context)
 	VerifyPinCode(c *gin.Context)
@@ -168,6 +169,26 @@ func (h authController) LoginPhoneNumber(c *gin.Context) {
 	}
 
 	handleSuccessResponse(c, http.StatusOK, "Login successful", user)
+}
+
+func (h authController) ResetPassword(c *gin.Context) {
+	var req struct {
+		NewPassword     string `json:"new_password" binding:"required"`
+		ConfirmPassword string `json:"confirm_password" binding:"required"`
+		RequestID       string `json:"request_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		handleErrorResponse(c, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+
+	errs := h.AuthService.ResetPassword(&req)
+	if errs != nil {
+		handleErrorResponse(c, http.StatusBadRequest, errs.Error(), nil)
+		return
+	}
+
+	handleSuccessResponse(c, http.StatusOK, "Password reset successfully", nil)
 }
 
 func (h authController) ChangeDeviceID(c *gin.Context) {
